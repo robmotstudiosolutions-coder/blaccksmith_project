@@ -1,19 +1,19 @@
 {
-  "name": "blaccksmith_project",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "slotsure",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SlotSure hospital clinic-booking MVP",
+  "type": "module",
+  "workspaces": ["blacksmith_pro", "apps/*", "packages/*"],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "npm run dev --workspace blacksmith_pro",
+    "dev:web": "npm run dev --workspace blacksmith_pro",
+    "dev:api": "npm run dev --workspace @slotsure/api",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "npm run db:generate --workspace @slotsure/database",
+    "db:migrate": "npm run db:migrate --workspace @slotsure/database",
+    "db:seed": "npm run db:seed --workspace @slotsure/database"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/robmotstudiosolutions-coder/blaccksmith_project.git"
-  },
-  "keywords": [],
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/robmotstudiosolutions-coder/blaccksmith_project/issues"
-  },
-  "homepage": "https://github.com/robmotstudiosolutions-coder/blaccksmith_project#readme"
+  "engines": { "node": ">=22.0.0" }
 }
