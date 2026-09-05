@@ -1,5 +1,6 @@
 /* A translucent image layer keeps the welcome copy readable at every viewport size. */
 .hero { background: linear-gradient(120deg, hsl(196 56% 94% / .88), hsl(198 33% 97% / .82)), url('https://i.imgur.com/9ifNRAt.jpg') center / cover no-repeat !important; }
+.support { padding: 24px 7vw; background: hsl(var(--surface)); border-top: 1px solid hsl(var(--line)); color: hsl(var(--muted)); }
 
 @tailwind base;
 @tailwind components;

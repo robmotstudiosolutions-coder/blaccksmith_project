@@ -18,13 +18,33 @@ app.setErrorHandler((error, request, reply) => {
 
 app.get('/health', async () => ({ status: 'ok', service: 'slotsure-api' }));
 app.get('/healthz', async () => ({ status: 'ok', service: 'slotsure-api' }));
+
+// Catalog & Discovery
+app.get('/v1/clinics', async () => ({ clinics: await bookingService.getClinics() }));
+app.get('/v1/appointment-types', async request => {
+  const query = z.object({ clinicId: z.string().uuid().optional() }).parse(request.query);
+  return { appointmentTypes: await bookingService.getAppointmentTypes(query.clinicId) };
+});
+
+// Patient Booking Journey
 app.get('/v1/availability', async request => { const query = z.object({ clinicId: z.string().uuid(), appointmentTypeId: z.string().uuid() }).parse(request.query); return { slots: await bookingService.availability(query.clinicId, query.appointmentTypeId), authoritative: true }; });
 app.post('/v1/holds', async request => { const body = z.object({ slotId: z.string().uuid() }).parse(request.body); return bookingService.createHold(patientId(request.headers), body.slotId, idempotencyKey(request.headers)); });
 app.post('/v1/holds/:holdId/commit', async request => { const params = z.object({ holdId: z.string().uuid() }).parse(request.params); return bookingService.commitHold(patientId(request.headers), params.holdId, idempotencyKey(request.headers)); });
 app.post('/v1/bookings/:bookingId/cancel', async request => { const params = z.object({ bookingId: z.string().uuid() }).parse(request.params); return bookingService.cancelBooking(patientId(request.headers), params.bookingId, idempotencyKey(request.headers)); });
 app.get('/v1/booking-attempts/:idempotencyKey', async request => { const params = z.object({ idempotencyKey: z.string().min(8).max(160) }).parse(request.params); const result = await bookingService.attempt(patientId(request.headers), params.idempotencyKey); if (!result) throw new ApplicationError('BOOKING_STATE_UNKNOWN', 'We are still checking the booking status.', 202, true); return result; });
 app.get('/v1/alternatives', async request => { const query = z.object({ clinicId: z.string().uuid(), appointmentTypeId: z.string().uuid() }).parse(request.query); return { slots: await bookingService.alternatives(query.clinicId, query.appointmentTypeId) }; });
+
+// Staff Operations
+app.get('/v1/staff/metrics', async () => ({ metrics: await bookingService.getStaffMetrics() }));
+app.get('/v1/staff/reconciliation', async () => ({ items: await bookingService.getReconciliationQueue() }));
+app.post('/v1/staff/slots/:slotId/release', async request => {
+  const params = z.object({ slotId: z.string().uuid() }).parse(request.params);
+  await bookingService.releaseCancelledSlot(params.slotId);
+  return { success: true, slotId: params.slotId, state: 'PUBLISHED' };
+});
+
 app.addHook('onClose', async () => bookingService.close());
+
 const start = async (): Promise<void> => {
   try { await app.listen({ port: config.PORT, host: config.HOST }); }
   catch (error) { app.log.error(error, 'Unable to start SlotSure API'); process.exit(1); }
