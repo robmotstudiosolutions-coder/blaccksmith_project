@@ -1,5 +1,6 @@
 export type SlotAvailabilityState = 'PROVISIONAL' | 'HELD_BY_THIS_SESSION' | 'HELD_BY_OTHER' | 'BOOKED' | 'BLOCKED' | 'EXPIRED' | 'UNKNOWN' | 'STALE';
-export type BookingAttemptState = 'IDLE' | 'HOLDING' | 'HELD' | 'COMMITTING' | 'CONFIRMED' | 'RACE_LOST' | 'PENDING_RESOLUTION' | 'EXPIRED' | 'FAILED_RETRYABLE' | 'FAILED_TERMINAL';
+export type BookingAttemptState = 'IDLE' | 'HOLDING' | 'HELD' | 'COMMITTING' | 'CONFIRMED' | 'CANCELLING' | 'CANCELLED' | 'RACE_LOST' | 'PENDING_RESOLUTION' | 'EXPIRED' | 'FAILED_RETRYABLE' | 'FAILED_TERMINAL';
+
 export type Role = 'PATIENT' | 'CAREGIVER' | 'BOOKING_STAFF' | 'CLINIC_ADMIN' | 'CLINICIAN' | 'OPERATIONS_MANAGER' | 'AUDITOR';
 export type Scenario = 'success' | 'conflict' | 'expired' | 'pending' | 'degraded';
 

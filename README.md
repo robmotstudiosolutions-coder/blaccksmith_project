@@ -6,14 +6,14 @@ SlotSure is a hospital clinic-booking MVP. Its defining guarantee is that Postgr
 
 1. Copy `.env.example` to `.env` and use its development-only values.
 2. Start PostgreSQL: `docker compose up -d postgres`.
-3. Install packages: `pnpm install`. The repository includes `pnpm-workspace.yaml`; use pnpm consistently rather than mixing npm and pnpm installs.
+3. Install packages: `npm install`. This workspace now uses the npm lockfiles generated for the Next.js application; avoid mixing package managers in the same checkout.
 4. Apply migrations: `npm run db:migrate`.
 5. Seed non-production data: `npm run db:seed`.
-6. Run the web client: `pnpm dev` (or `pnpm dev:web`); run the API: `pnpm dev:api` on port `3001`.
+6. Run the API in one terminal: `npm run dev:api`. Run the web client in another: `npm run dev` (or `npm run dev:web`). The web app runs on port `3000` and proxies booking requests to the API on port `3001`.
 
 ## Architecture
 
-- `blacksmith_pro/`: Next.js App Router frontend with deterministic mock booking scenarios. The app currently provides the patient booking flow and a safe staff operations overview.
+- `blacksmith_pro/`: Next.js App Router frontend with a same-origin server-side proxy to the Fastify booking API. It provides live development booking and a safe staff operations overview.
 - `apps/api/`: Fastify API and edge validation.
 - `packages/domain/`: product vocabulary and, next, state transitions and typed domain errors.
 - `packages/database/`: Drizzle schema, PostgreSQL migrations, and development-only seed data.
@@ -22,7 +22,7 @@ The migration creates `one_active_booking_per_slot_idx`, a partial unique index 
 
 ## Frontend
 
-Run `npm run dev` for the frontend. In development, its scenario selector demonstrates a successful booking, competing request, expired hold, uncertain outcome resolution, and stale availability. It is not rendered in production builds. Run `npm run dev:api` separately for the API.
+Run `npm run dev` for the frontend and `npm run dev:api` separately for the API. The patient screen now uses live API availability, holds, idempotent commits, and typed error states. Its development identity is held server-side by the Next proxy and must be replaced with an approved identity-provider integration before production.
 
 ## Atomic booking API
 
