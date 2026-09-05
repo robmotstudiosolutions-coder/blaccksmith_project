@@ -10,6 +10,32 @@ export type AppointmentType = { id: string; clinicId: string; name: string; dura
 export type StaffMetric = { label: string; value: string; note: string };
 export type ReconciliationItem = { id: string; slotId: string; safeReference: string; category: string; ageMinutes: number; nextSafeAction: string };
 export type AuditEventItem = { id: string; action: string; targetType: string; targetId: string | null; outcome: string; correlationId: string; occurredAt: string };
+export type Clinician = { id: string; name: string; specialty: string | null };
+export type PatientAppointment = {
+  bookingId: string;
+  reference: string;
+  slotId: string;
+  clinicName: string;
+  clinicianName: string;
+  appointmentType: string;
+  mode: 'IN_PERSON' | 'VIDEO';
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  canJoinVideo: boolean;
+  videoOpensAt?: string;
+};
+export type TelehealthTokenResponse = {
+  bookingId: string;
+  roomName: string;
+  token: string;
+  participantId: string;
+  participantName: string;
+  role: 'PATIENT' | 'CLINICIAN' | 'OBSERVER';
+  appointmentStartTime: string;
+  appointmentEndTime: string;
+  expiresAt: string;
+};
 
 
 type ApiSlot = { slotId: string; clinicId: string; clinicName: string; appointmentTypeId: string; appointmentType: string; clinicianId: string | null; clinicianName: string | null; startsAt: string; endsAt: string; version: number; state: string };
@@ -81,5 +107,33 @@ export async function releaseSlot(slotId: string): Promise<{ success: boolean; s
 export async function getAuditEvents(limit = 20): Promise<AuditEventItem[]> {
   const result = await request<{ events: AuditEventItem[] }>(`staff/audit?limit=${limit}`);
   return result.events;
+}
+
+export async function getClinicians(clinicId?: string, specialty?: string): Promise<Clinician[]> {
+  const params = new URLSearchParams();
+  if (clinicId) params.set('clinicId', clinicId);
+  if (specialty) params.set('specialty', specialty);
+  const q = params.toString() ? `?${params.toString()}` : '';
+  const result = await request<{ clinicians: Clinician[] }>(`clinicians${q}`);
+  return result.clinicians;
+}
+
+export async function getPatientAppointments(): Promise<PatientAppointment[]> {
+  const result = await request<{ appointments: PatientAppointment[] }>('patients/me/appointments');
+  return result.appointments;
+}
+
+export async function rescheduleBooking(bookingId: string, newSlotId: string, idempotencyKey: string): Promise<{ bookingId: string; status: 'CONFIRMED'; correlationId: string }> {
+  return request(`bookings/${bookingId}/reschedule`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ newSlotId })
+  });
+}
+
+export async function getTelehealthToken(bookingId: string): Promise<TelehealthTokenResponse> {
+  return request(`appointments/${bookingId}/telehealth/token`, {
+    method: 'POST'
+  });
 }
 

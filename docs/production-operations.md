@@ -90,3 +90,26 @@ Before moving to full production deployment, the following organizational integr
 | **Cancellation Policy** | 24/7 self-service cancellation | Cut-off rules (e.g. minimum 24 hours prior to appointment) |
 | **Notifications** | Suppressed / Logging only | SMS (NHS Notify / Twilio) / Email gateway |
 | **EHR Synchronization** | Standalone Drizzle schema | HL7 FHIR bidirectional sync with Epic/Cerner |
+| **Telehealth Media Gateway** | Ephemeral HMAC token / WebRTC mock | LiveKit / Twilio Video / AWS Chime enterprise infrastructure |
+| **Clinical Recording Policy** | Default disabled (Zero recording) | Medico-legal clinical consent & encrypted storage compliance |
+
+---
+
+## 5. Telehealth Consultation Architecture & Security
+
+### 5.1 Access Window Guard
+- Video tokens are strictly gated on the backend:
+  - **Early Guard**: Rejected with `403 TELEHEALTH_TOO_EARLY` if requested earlier than 10 minutes prior to scheduled start time (`startsAt - 10m`).
+  - **Expiration Guard**: Rejected with `403 TELEHEALTH_EXPIRED` if requested later than 15 minutes past scheduled end time (`endsAt + 15m`).
+- Patient waiting room automatically calculates the time window and displays live countdown.
+
+### 5.2 Ephemeral Tokenization & Participant Scoping
+- Video tokens are cryptographically generated on demand via `/v1/appointments/:bookingId/telehealth/token` and never stored in client persistence.
+- Participant authorization strictly validates that `actor_id` matches either the confirmed `patient_id` or the assigned `clinician_id` (or authorized clinic staff observer).
+- Every token issuance generates an immutable audit trail entry (`TELEHEALTH_ROOM_ACCESSED`) with timestamp and correlation ID.
+
+### 5.3 Clinical Safety & Emergency Protocol
+- Consultation view maintains a persistent, high-visibility emergency warning:
+  > **Emergency Guidance:** If you or the patient are experiencing a life-threatening medical emergency, hang up immediately and dial 999, 911, or 112.
+- Pre-call device check ensures camera and microphone permissions are verified before the participant enters the clinical room.
+

@@ -170,20 +170,41 @@ describe('Fastify API Routes Integration (app.inject)', () => {
   });
 
   describe('Staff Operations & Audit Log', () => {
-    it('returns metrics on /v1/staff/metrics', async () => {
-      const res = await app.inject({ method: 'GET', url: '/v1/staff/metrics' });
+    it('rejects patients from accessing staff metrics with 403', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/staff/metrics',
+        headers: { 'x-user-role': 'PATIENT' }
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('returns metrics on /v1/staff/metrics for authorized staff', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/staff/metrics',
+        headers: { 'x-user-role': 'BOOKING_STAFF' }
+      });
       expect(res.statusCode).toBe(200);
       expect(res.json().metrics).toHaveLength(1);
     });
 
     it('returns reconciliation items on /v1/staff/reconciliation', async () => {
-      const res = await app.inject({ method: 'GET', url: '/v1/staff/reconciliation' });
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/staff/reconciliation',
+        headers: { 'x-user-role': 'BOOKING_STAFF' }
+      });
       expect(res.statusCode).toBe(200);
       expect(res.json().items).toHaveLength(1);
     });
 
     it('returns audit events on /v1/staff/audit', async () => {
-      const res = await app.inject({ method: 'GET', url: '/v1/staff/audit?limit=10' });
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/staff/audit?limit=10',
+        headers: { 'x-user-role': 'BOOKING_STAFF' }
+      });
       expect(res.statusCode).toBe(200);
       expect(res.json().events).toHaveLength(1);
       expect(res.json().events[0].action).toBe('HOLD_CREATED');
@@ -192,7 +213,8 @@ describe('Fastify API Routes Integration (app.inject)', () => {
     it('releases cancelled slot on /v1/staff/slots/:id/release', async () => {
       const res = await app.inject({
         method: 'POST',
-        url: `/v1/staff/slots/${demoSlotId}/release`
+        url: `/v1/staff/slots/${demoSlotId}/release`,
+        headers: { 'x-user-role': 'CLINIC_ADMIN' }
       });
       expect(res.statusCode).toBe(200);
       expect(res.json()).toEqual({ success: true, slotId: demoSlotId, state: 'PUBLISHED' });

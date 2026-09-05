@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, AlertTriangle, CalendarCheck, CheckCircle2, Clock3, FileText, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { AccessGate } from '@/components/access-gate';
+import { AppHeader } from '@/components/app-header';
 import { getAuditEvents, getReconciliationQueue, getStaffMetrics, releaseSlot } from '@/lib/api/booking-client';
 
-export default function StaffDashboard() {
+function StaffOperations() {
   const [releasingId, setReleasingId] = useState<string>();
   const [actionMessage, setActionMessage] = useState<string>('');
 
@@ -40,27 +42,14 @@ export default function StaffDashboard() {
     }
   };
 
-  const metrics = metricsQuery.data ?? [
-    { label: 'Today’s confirmed bookings', value: '42', note: 'Across three clinics' },
-    { label: 'Unresolved outcomes', value: '2', note: 'Awaiting controlled release' },
-    { label: 'Hold expiries', value: '7', note: 'Today' },
-    { label: 'Availability conflicts', value: '3.1%', note: 'Last 24 hours' }
-  ];
+  const metrics = metricsQuery.data ?? [];
 
   const items = reconciliationQuery.data ?? [];
   const auditEvents = auditQuery.data ?? [];
 
   return (
     <main>
-      <header className="header">
-        <a className="brand" href="/">SlotSure</a>
-        <nav aria-label="Staff">
-          <a href="/staff">Operations</a>
-          <a href="#reconciliation">Reconciliation</a>
-          <a href="#audit">Audit log</a>
-          <a href="/">Patient booking view</a>
-        </nav>
-      </header>
+      <AppHeader staff/>
 
       <section className="staff-page">
         <p className="eyebrow">Booking staff · Main Hospital</p>
@@ -76,7 +65,9 @@ export default function StaffDashboard() {
           </div>
         )}
 
+        {metricsQuery.isError && <section className="staff-error" role="alert"><AlertTriangle/><div><strong>Operations data is unavailable.</strong><p>Check the booking service connection and try again.</p></div><button className="button secondary" onClick={() => metricsQuery.refetch()}>Retry</button></section>}
         <div className="metric-grid">
+          {metricsQuery.isLoading && <p>Loading operations metrics…</p>}
           {metrics.map((item, index) => (
             <article className="metric" key={item.label}>
               {index === 1 ? <AlertTriangle/> : index === 0 ? <CalendarCheck/> : index === 2 ? <Clock3/> : <Activity/>}
@@ -205,3 +196,5 @@ export default function StaffDashboard() {
     </main>
   );
 }
+
+export default function StaffDashboard() { return <AccessGate requireStaff><StaffOperations/></AccessGate>; }

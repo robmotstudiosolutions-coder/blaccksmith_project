@@ -9,9 +9,30 @@ export type CancellationResult = { bookingId: string; status: 'CANCEL_PENDING'; 
 export type ClinicItem = { id: string; name: string; hospitalName: string; locationReference: string };
 export type AppointmentTypeItem = { id: string; clinicId: string; name: string; durationMinutes: number };
 export type StaffMetric = { label: string; value: string; note: string };
-export type ReconciliationItem = { id: string; slotId: string; safeReference: string; category: string; ageMinutes: number; nextSafeAction: string };
 export type AuditEventItem = { id: string; action: string; targetType: string; targetId: string | null; outcome: string; correlationId: string; occurredAt: string };
-
+export type ClinicianItem = { id: string; name: string; specialty: string | null };
+export type ReconciliationItem = { id: string; slotId: string; safeReference: string; category: string; ageMinutes: number; nextSafeAction: string };
+export type PatientAppointmentItem = {
+  bookingId: string;
+  reference: string;
+  slotId: string;
+  clinicName: string;
+  clinicianName: string;
+  appointmentType: string;
+  mode: 'IN_PERSON' | 'VIDEO';
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  canJoinVideo: boolean;
+  videoOpensAt?: string;
+};
+export type SlotPublishInput = {
+  clinicId: string;
+  appointmentTypeId: string;
+  clinicianId?: string;
+  startTime: string;
+  endTime: string;
+};
 
 export class BookingService {
   private readonly sql: any;
@@ -33,6 +54,131 @@ export class BookingService {
     }
     return this.sql<AppointmentTypeItem[]>`select id, clinic_id as "clinicId", name, duration_minutes as "durationMinutes" from appointment_types order by name`;
   }
+
+  async getClinicians(clinicId?: string, specialty?: string): Promise<ClinicianItem[]> {
+    if (specialty) {
+      return this.sql<ClinicianItem[]>`select id, name, specialty from clinicians where specialty = ${specialty} and status = 'ACTIVE' order by name`;
+    }
+    return this.sql<ClinicianItem[]>`select id, name, specialty from clinicians where status = 'ACTIVE' order by name`;
+  }
+
+  async getPatientAppointments(patientId: string): Promise<PatientAppointmentItem[]> {
+    const rows = await this.sql<{
+      bookingId: string;
+      reference: string;
+      slotId: string;
+      clinicName: string;
+      clinicianName: string | null;
+      appointmentType: string;
+      mode: 'IN_PERSON' | 'VIDEO';
+      startsAt: Date;
+      endsAt: Date;
+      status: string;
+    }[]>`
+      select 
+        bookings.id as "bookingId",
+        bookings.idempotency_key as reference,
+        bookings.slot_id as "slotId",
+        clinics.name as "clinicName",
+        clinicians.name as "clinicianName",
+        appointment_types.name as "appointmentType",
+        appointment_types.mode,
+        slots.start_time as "startsAt",
+        slots.end_time as "endsAt",
+        bookings.status
+      from bookings
+      inner join slots on slots.id = bookings.slot_id
+      inner join clinics on clinics.id = bookings.clinic_id
+      inner join appointment_types on appointment_types.id = bookings.appointment_type_id
+      left join clinicians on clinicians.id = bookings.clinician_id
+      where bookings.patient_id = ${patientId}
+      order by slots.start_time desc
+    `;
+
+    const now = Date.now();
+    return rows.map((r: {
+      bookingId: string;
+      reference: string;
+      slotId: string;
+      clinicName: string;
+      clinicianName: string | null;
+      appointmentType: string;
+      mode: 'IN_PERSON' | 'VIDEO';
+      startsAt: Date;
+      endsAt: Date;
+      status: string;
+    }) => {
+      const startMs = new Date(r.startsAt).getTime();
+      const endMs = new Date(r.endsAt).getTime();
+      const opensAtMs = startMs - 10 * 60 * 1000;
+      const closesAtMs = endMs + 15 * 60 * 1000;
+      const isVideo = r.mode === 'VIDEO';
+      const canJoinVideo = isVideo && r.status === 'CONFIRMED' && now >= opensAtMs && now <= closesAtMs;
+
+      return {
+        bookingId: r.bookingId,
+        reference: `SS-${r.bookingId.slice(0, 8).toUpperCase()}`,
+        slotId: r.slotId,
+        clinicName: r.clinicName,
+        clinicianName: r.clinicianName ?? 'Attending Clinician',
+        appointmentType: r.appointmentType,
+        mode: r.mode,
+        startsAt: r.startsAt.toISOString(),
+        endsAt: r.endsAt.toISOString(),
+        status: r.status,
+        canJoinVideo,
+        videoOpensAt: isVideo ? new Date(opensAtMs).toISOString() : undefined
+      };
+    });
+  }
+
+  async rescheduleBooking(patientId: string, bookingId: string, newSlotId: string, key: string): Promise<BookingResult> {
+    const correlationId = randomUUID();
+    return this.sql.begin(async (sql: any) => {
+      const oldBookings = await sql<{ id: string; slot_id: string; status: string; appointment_type_id: string; clinic_id: string; clinician_id: string | null }[]>`
+        select id, slot_id, status, appointment_type_id, clinic_id, clinician_id
+        from bookings
+        where id = ${bookingId} and patient_id = ${patientId}
+        for update
+      `;
+      const oldBooking = oldBookings[0];
+      if (!oldBooking) throw new ApplicationError('SLOT_NOT_FOUND', 'Original appointment could not be found.', 404);
+      if (oldBooking.status !== 'CONFIRMED') throw new ApplicationError('VALIDATION_ERROR', 'Only confirmed appointments can be rescheduled.', 409);
+
+      const newSlots = await sql<{ id: string; state: string; clinic_id: string; appointment_type_id: string; clinician_id: string | null }[]>`
+        select id, state, clinic_id, appointment_type_id, clinician_id
+        from slots
+        where id = ${newSlotId}
+        for update
+      `;
+      const newSlot = newSlots[0];
+      if (!newSlot) throw new ApplicationError('SLOT_NOT_FOUND', 'The new appointment slot was not found.', 404);
+      if (newSlot.state !== 'PUBLISHED') throw new ApplicationError('SLOT_NOT_AVAILABLE', 'The selected new time is no longer available.', 409);
+
+      await sql`update bookings set status = 'RESCHEDULED', updated_at = now() where id = ${bookingId}`;
+      await sql`update slots set state = 'CANCEL_PENDING', version = version + 1, updated_at = now() where id = ${oldBooking.slot_id}`;
+
+      const newBookingId = randomUUID();
+      await sql`
+        insert into bookings (id, patient_id, slot_id, appointment_type_id, clinic_id, clinician_id, idempotency_key)
+        values (${newBookingId}, ${patientId}, ${newSlot.id}, ${newSlot.appointment_type_id}, ${newSlot.clinic_id}, ${newSlot.clinician_id}, ${key})
+      `;
+      await sql`update slots set state = 'BOOKED', version = version + 1, updated_at = now() where id = ${newSlot.id}`;
+
+      await sql`
+        insert into audit_events (action, target_type, target_id, outcome, correlation_id)
+        values ('BOOKING_RESCHEDULED', 'BOOKING', ${newBookingId}, 'SUCCESS', ${correlationId})
+      `;
+
+      return {
+        bookingId: newBookingId,
+        status: 'CONFIRMED',
+        slotId: newSlot.id,
+        correlationId
+      };
+    });
+  }
+
 
   async createHold(patientId: string, slotId: string, key: string): Promise<HoldResult> {
     return this.sql.begin(async (sql: any) => {
@@ -161,6 +307,24 @@ export class BookingService {
       correlationId: r.correlation_id,
       occurredAt: r.occurred_at.toISOString()
     }));
+  }
+
+  async publishSlots(slotsData: SlotPublishInput[]): Promise<{ publishedCount: number; slotIds: string[] }> {
+    const correlationId = randomUUID();
+    const slotIds: string[] = [];
+    for (const slot of slotsData) {
+      const id = randomUUID();
+      slotIds.push(id);
+      await this.sql`
+        insert into slots (id, clinic_id, appointment_type_id, clinician_id, start_time, end_time, state, version)
+        values (${id}, ${slot.clinicId}, ${slot.appointmentTypeId}, ${slot.clinicianId ?? null}, ${new Date(slot.startTime)}, ${new Date(slot.endTime)}, 'PUBLISHED', 1)
+      `;
+    }
+    await this.sql`
+      insert into audit_events (id, action, target_type, outcome, correlation_id)
+      values (${randomUUID()}, 'PUBLISH_SLOTS', 'SLOT_BATCH', 'SUCCESS', ${correlationId})
+    `;
+    return { publishedCount: slotIds.length, slotIds };
   }
 }
 

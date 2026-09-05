@@ -117,6 +117,76 @@ function handleMockFallback(request: NextRequest, path: string[]): Response | nu
     });
   }
 
+  if (endpoint === 'clinicians' && request.method === 'GET') {
+    return Response.json({
+      clinicians: [
+        { id: '00000000-0000-4000-8000-000000000301', name: 'Dr. Sarah Adebayo', specialty: 'Cardiology' },
+        { id: '00000000-0000-4000-8000-000000000302', name: 'Dr. Marcus Chen', specialty: 'Dermatology' },
+        { id: '00000000-0000-4000-8000-000000000303', name: 'Dr. Elena Rostova', specialty: 'Physiotherapy' }
+      ]
+    });
+  }
+
+  if (endpoint === 'patients' && path[1] === 'me' && path[2] === 'appointments' && request.method === 'GET') {
+    const now = Date.now();
+    return Response.json({
+      appointments: [
+        {
+          bookingId: '00000000-0000-4000-8000-000000000601',
+          reference: 'SS-C10948',
+          slotId: '00000000-0000-4000-8000-000000000401',
+          clinicName: 'Cardiology Clinic',
+          clinicianName: 'Dr. Sarah Adebayo',
+          appointmentType: 'Initial cardiology consultation',
+          mode: 'VIDEO',
+          startsAt: new Date(now + 2 * 60 * 1000).toISOString(),
+          endsAt: new Date(now + 32 * 60 * 1000).toISOString(),
+          status: 'CONFIRMED',
+          canJoinVideo: true,
+          videoOpensAt: new Date(now - 8 * 60 * 1000).toISOString()
+        },
+        {
+          bookingId: '00000000-0000-4000-8000-000000000602',
+          reference: 'SS-D88291',
+          slotId: '00000000-0000-4000-8000-000000000402',
+          clinicName: 'Dermatology Clinic',
+          clinicianName: 'Dr. Marcus Chen',
+          appointmentType: 'Dermatology review',
+          mode: 'IN_PERSON',
+          startsAt: new Date(now + 86400 * 1000 * 3).toISOString(),
+          endsAt: new Date(now + 86400 * 1000 * 3 + 30 * 60 * 1000).toISOString(),
+          status: 'CONFIRMED',
+          canJoinVideo: false
+        }
+      ]
+    });
+  }
+
+  if (endpoint === 'appointments' && path[2] === 'telehealth' && path[3] === 'token' && request.method === 'POST') {
+    const bookingId = path[1];
+    return Response.json({
+      bookingId,
+      roomName: `slotsure-room-${bookingId.slice(0, 8)}`,
+      token: `demo-telehealth-jwt-token-${bookingId.slice(0, 8)}`,
+      participantId: demoPatientId,
+      participantName: 'Jane Doe',
+      role: 'PATIENT',
+      appointmentStartTime: new Date().toISOString(),
+      appointmentEndTime: new Date(Date.now() + 30 * 60000).toISOString(),
+      expiresAt: new Date(Date.now() + 7200000).toISOString()
+    });
+  }
+
+  if (endpoint === 'bookings' && path[2] === 'reschedule' && request.method === 'POST') {
+    const newBookingId = crypto.randomUUID();
+    return Response.json({
+      bookingId: newBookingId,
+      status: 'CONFIRMED',
+      slotId: '00000000-0000-4000-8000-000000000403',
+      correlationId: `SS-RESCHED-${Math.floor(10000 + Math.random() * 90000)}`
+    });
+  }
+
   if (endpoint === 'staff') {
     const sub = path[1];
     if (sub === 'metrics' && request.method === 'GET') {
@@ -150,6 +220,9 @@ function handleMockFallback(request: NextRequest, path: string[]): Response | nu
     if (sub === 'slots' && path[3] === 'release' && request.method === 'POST') {
       return Response.json({ success: true, slotId: path[2], state: 'PUBLISHED' });
     }
+    if (sub === 'slots' && path[2] === 'publish' && request.method === 'POST') {
+      return Response.json({ publishedCount: 1, slotIds: [crypto.randomUUID()] });
+    }
   }
 
   return null;
@@ -169,6 +242,12 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   const headers = new Headers();
   headers.set('accept', 'application/json');
   headers.set('x-patient-id', demoPatientId);
+  const auth = request.headers.get('authorization');
+  if (auth) headers.set('authorization', auth);
+  const sessionToken = request.headers.get('x-session-token');
+  if (sessionToken) headers.set('x-session-token', sessionToken);
+  const userRole = request.headers.get('x-user-role');
+  if (userRole) headers.set('x-user-role', userRole);
   const key = request.headers.get('idempotency-key');
   if (key) headers.set('idempotency-key', key);
   if (request.headers.get('content-type')) headers.set('content-type', request.headers.get('content-type')!);

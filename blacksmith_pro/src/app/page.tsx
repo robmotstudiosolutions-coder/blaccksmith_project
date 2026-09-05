@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Clock3, ShieldCheck, TriangleAlert, XCircle } from 'lucide-react';
+import { AppHeader } from '@/components/app-header';
+import { useSession } from '@/lib/session';
+import { specialties, type Specialty } from '@/lib/specialties';
 import {
   cancelBooking,
   commitHold,
@@ -32,6 +35,7 @@ function SlotCard({ slot, onSelect, disabled }: { slot: Slot; onSelect: (slot: S
 }
 
 export default function Home() {
+  const { user } = useSession();
   const [selectedClinicId, setSelectedClinicId] = useState<string>(defaultBookingContext.clinicId);
   const [selectedTypeId, setSelectedTypeId] = useState<string>(defaultBookingContext.appointmentTypeId);
   const [attempt, setAttempt] = useState<BookingAttemptState>('IDLE');
@@ -42,18 +46,25 @@ export default function Home() {
   const [booking, setBooking] = useState<Booking>();
   const [message, setMessage] = useState('');
   const [confirmCancelPrompt, setConfirmCancelPrompt] = useState(false);
+  const [specialtySearch, setSpecialtySearch] = useState('');
+  const [specialtyCategory, setSpecialtyCategory] = useState('All care');
+  const [directoryMessage, setDirectoryMessage] = useState('');
 
   // Catalog Discovery queries
   const clinicsQuery = useQuery({ queryKey: ['clinics'], queryFn: getClinics });
+  const selectedSpecialty = specialties.find(item => item.clinicId === selectedClinicId) ?? specialties.find(item => `directory:${item.name}` === selectedClinicId);
+  const isOnlineBookable = Boolean(selectedSpecialty?.clinicId && selectedSpecialty?.appointmentTypeId);
   const typesQuery = useQuery({
     queryKey: ['appointmentTypes', selectedClinicId],
-    queryFn: () => getAppointmentTypes(selectedClinicId)
+    queryFn: () => getAppointmentTypes(selectedClinicId),
+    enabled: isOnlineBookable
   });
 
   // Availability query
   const availability = useQuery({
     queryKey: ['availability', selectedClinicId, selectedTypeId],
-    queryFn: () => getAvailability(selectedClinicId, selectedTypeId)
+    queryFn: () => getAvailability(selectedClinicId, selectedTypeId),
+    enabled: isOnlineBookable && Boolean(selectedTypeId)
   });
 
   // Update selected clinic/type when catalog loads
@@ -98,6 +109,10 @@ export default function Home() {
   };
 
   const choose = async (slot: Slot) => {
+    if (!user) {
+      window.location.assign('/sign-in');
+      return;
+    }
     setSelected(slot);
     setMessage('');
     setAttempt('HOLDING');
@@ -149,17 +164,24 @@ export default function Home() {
   };
 
   const busy = attempt === 'HOLDING' || attempt === 'COMMITTING' || attempt === 'CANCELLING';
+  const specialtyCategories = ['All care', ...Array.from(new Set(specialties.map(item => item.category)))];
+  const matchingSpecialties = specialties.filter(item => `${item.name} ${item.description} ${item.category}`.toLowerCase().includes(specialtySearch.toLowerCase()) && (specialtyCategory === 'All care' || item.category === specialtyCategory));
+  const selectSpecialty = (specialty: Specialty) => {
+    setSelectedClinicId(specialty.clinicId ?? `directory:${specialty.name}`);
+    setSelectedTypeId(specialty.appointmentTypeId ?? '');
+    setDirectoryMessage(specialty.clinicId ? `${specialty.name} has live online appointment availability.` : `${specialty.name} is in our specialist directory. Online appointment inventory for this service is being added by the clinic.`);
+    document.getElementById('appointments')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const selectClinic = (clinicId: string) => {
+    const specialty = specialties.find(item => item.clinicId === clinicId) ?? specialties.find(item => `directory:${item.name}` === clinicId);
+    setSelectedClinicId(clinicId);
+    setSelectedTypeId(specialty?.appointmentTypeId ?? '');
+    setDirectoryMessage(specialty?.clinicId ? '' : `${specialty?.name ?? 'This service'} does not have online appointments yet.`);
+  };
 
   return (
     <main>
-      <header className="header">
-        <a className="brand" href="/"><ShieldCheck aria-hidden="true"/> SlotSure</a>
-        <nav aria-label="Primary">
-          <a href="#appointments">Book an appointment</a>
-          <a href="/staff">Staff view</a>
-          <a href="#support">Help</a>
-        </nav>
-      </header>
+      <AppHeader/>
 
       <section className="hero">
         <div>
@@ -176,6 +198,14 @@ export default function Home() {
         </aside>
       </section>
 
+      <section className="specialty-directory" aria-labelledby="specialty-heading">
+        <div className="directory-heading"><div><p className="eyebrow">Find the right care</p><h2 id="specialty-heading">Explore clinical specialties</h2><p>Choose from primary, specialist and allied health services before selecting a convenient appointment time.</p></div><label className="specialty-search"><span className="sr-only">Search specialties</span><input value={specialtySearch} onChange={event => setSpecialtySearch(event.target.value)} placeholder="Search a specialty"/></label></div>
+        {directoryMessage && <p className="directory-message" role="status">{directoryMessage}</p>}
+        <div className="directory-controls"><div className="category-filter" aria-label="Filter specialties by care category">{specialtyCategories.map(category => <button key={category} className={specialtyCategory === category ? 'filter-button active' : 'filter-button'} aria-pressed={specialtyCategory === category} onClick={() => setSpecialtyCategory(category)}>{category}</button>)}</div><p className="directory-count">{matchingSpecialties.length} specialties</p></div>
+        <div className="specialty-grid">{matchingSpecialties.map(specialty => <article className="specialty-card" key={specialty.name}><div><p className="specialty-category">{specialty.category}</p><h3>{specialty.name}</h3><p>{specialty.description}</p></div><div className="specialty-footer"><span className={specialty.clinicId ? 'availability-label live' : 'availability-label'}>{specialty.clinicId ? 'Appointments available' : 'Service coming soon'}</span><button className="text-button" onClick={() => selectSpecialty(specialty)}>{specialty.clinicId ? 'View appointments' : 'View service'}</button></div></article>)}</div>
+        {matchingSpecialties.length === 0 && <p className="empty-specialty">No specialty matches that search. Try a broader health need, such as “heart” or “children”.</p>}
+      </section>
+
       <section className="layout" id="appointments">
         <aside className="search-panel">
           <p className="eyebrow">Find an appointment</p>
@@ -187,11 +217,9 @@ export default function Home() {
               style={{ width: '100%', padding: '0.625rem', marginTop: '0.25rem', borderRadius: '6px', border: '1px solid #ccc' }}
               value={selectedClinicId}
               disabled={busy}
-              onChange={e => setSelectedClinicId(e.target.value)}
+              onChange={e => selectClinic(e.target.value)}
             >
-              {clinicsQuery.data?.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              )) ?? <option value={defaultBookingContext.clinicId}>Cardiology Clinic</option>}
+              {specialties.map(specialty => <option key={specialty.name} value={specialty.clinicId ?? `directory:${specialty.name}`}>{specialty.name}{specialty.clinicId ? '' : ' — coming soon'}</option>)}
             </select>
           </label>
 
@@ -200,17 +228,16 @@ export default function Home() {
             <select
               style={{ width: '100%', padding: '0.625rem', marginTop: '0.25rem', borderRadius: '6px', border: '1px solid #ccc' }}
               value={selectedTypeId}
-              disabled={busy}
+              disabled={busy || !isOnlineBookable}
               onChange={e => setSelectedTypeId(e.target.value)}
             >
-              {typesQuery.data?.map(t => (
-                <option key={t.id} value={t.id}>{t.name} ({t.durationMinutes} min)</option>
-              )) ?? <option value={defaultBookingContext.appointmentTypeId}>Initial consultation (30 min)</option>}
+              {!isOnlineBookable && <option value="">Online appointments coming soon</option>}
+              {isOnlineBookable && (typesQuery.data?.map(t => <option key={t.id} value={t.id}>{t.name} ({t.durationMinutes} min)</option>) ?? <option value={selectedTypeId}>Loading consultation types…</option>)}
             </select>
           </label>
 
-          <button className="button" disabled={busy || availability.isFetching} onClick={search}>
-            {availability.isFetching ? 'Checking availability…' : 'Search availability'}
+          <button className="button" disabled={busy || availability.isFetching || !isOnlineBookable} onClick={search}>
+            {!isOnlineBookable ? 'Online booking coming soon' : availability.isFetching ? 'Checking availability…' : 'Search availability'}
           </button>
         </aside>
 
@@ -223,9 +250,10 @@ export default function Home() {
             <span className="badge">Live availability</span>
           </div>
 
-          <p className="notice"><Clock3 aria-hidden="true"/> A displayed time can change before you complete your booking.</p>
+          <p className="notice"><Clock3 aria-hidden="true"/> A displayed time can change before you complete your booking.{!user && ' Sign in is required before reserving a time.'}</p>
 
-          {availability.isLoading && <p>Checking availability…</p>}
+          {!isOnlineBookable && <section className="service-notice"><Clock3 aria-hidden="true"/><div><h3>{selectedSpecialty?.name ?? 'This service'} is being added</h3><p>Online appointment scheduling for this specialty is not available yet. Choose an available specialty or contact the clinic for assistance.</p></div></section>}
+          {isOnlineBookable && availability.isLoading && <p>Checking availability…</p>}
           {availability.isError && (
             <section className="expired" role="alert">
               <TriangleAlert/>
@@ -269,6 +297,21 @@ export default function Home() {
                 <p className="eyebrow">Appointment confirmed</p>
                 <h2>Your booking is complete</h2>
                 <p>Reference: <strong>{booking.reference}</strong> · {formatTime(booking.slot.startsAt)} with {booking.slot.clinicianName} at {booking.slot.clinicName}.</p>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '1rem', flexWrap: 'wrap' }}>
+                  <a href="/account" className="button" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                    Manage in Patient Portal
+                  </a>
+                  {booking.slot.mode === 'VIDEO' && (
+                    <a
+                      href={`/appointments/${booking.bookingId}/telehealth`}
+                      className="button secondary"
+                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                    >
+                      Enter Telehealth Consultation
+                    </a>
+                  )}
+                </div>
 
                 {message && <p style={{ color: 'red', marginTop: '0.5rem' }}>{message}</p>}
 
