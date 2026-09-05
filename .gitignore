@@ -5,3 +5,4 @@ dist
 .env
 apps/api/package-lock.json
 packages/database/package-lock.json
+apps/api/pnpm-lock.yaml

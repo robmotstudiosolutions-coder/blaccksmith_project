@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const environmentSchema = z.object({
   DATABASE_URL: z.string().url(),
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: z.coerce.number().int().positive().default(3001),
   HOST: z.string().default('127.0.0.1'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   HOLD_DURATION_SECONDS: z.coerce.number().int().min(30).max(3_600).default(300),
