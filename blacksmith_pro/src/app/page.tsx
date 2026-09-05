@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Clock3, ShieldCheck, TriangleAlert, XCircle } from 'lucide-react';
+import { AppHeader } from '@/components/app-header';
+import { useSession } from '@/lib/session';
 import {
   cancelBooking,
   commitHold,
@@ -32,6 +34,7 @@ function SlotCard({ slot, onSelect, disabled }: { slot: Slot; onSelect: (slot: S
 }
 
 export default function Home() {
+  const { user } = useSession();
   const [selectedClinicId, setSelectedClinicId] = useState<string>(defaultBookingContext.clinicId);
   const [selectedTypeId, setSelectedTypeId] = useState<string>(defaultBookingContext.appointmentTypeId);
   const [attempt, setAttempt] = useState<BookingAttemptState>('IDLE');
@@ -98,6 +101,10 @@ export default function Home() {
   };
 
   const choose = async (slot: Slot) => {
+    if (!user) {
+      window.location.assign('/sign-in');
+      return;
+    }
     setSelected(slot);
     setMessage('');
     setAttempt('HOLDING');
@@ -152,14 +159,7 @@ export default function Home() {
 
   return (
     <main>
-      <header className="header">
-        <a className="brand" href="/"><ShieldCheck aria-hidden="true"/> SlotSure</a>
-        <nav aria-label="Primary">
-          <a href="#appointments">Book an appointment</a>
-          <a href="/staff">Staff view</a>
-          <a href="#support">Help</a>
-        </nav>
-      </header>
+      <AppHeader/>
 
       <section className="hero">
         <div>
@@ -223,7 +223,7 @@ export default function Home() {
             <span className="badge">Live availability</span>
           </div>
 
-          <p className="notice"><Clock3 aria-hidden="true"/> A displayed time can change before you complete your booking.</p>
+          <p className="notice"><Clock3 aria-hidden="true"/> A displayed time can change before you complete your booking.{!user && ' Sign in is required before reserving a time.'}</p>
 
           {availability.isLoading && <p>Checking availability…</p>}
           {availability.isError && (
@@ -269,6 +269,21 @@ export default function Home() {
                 <p className="eyebrow">Appointment confirmed</p>
                 <h2>Your booking is complete</h2>
                 <p>Reference: <strong>{booking.reference}</strong> · {formatTime(booking.slot.startsAt)} with {booking.slot.clinicianName} at {booking.slot.clinicName}.</p>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '1rem', flexWrap: 'wrap' }}>
+                  <a href="/account" className="button" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                    Manage in Patient Portal
+                  </a>
+                  {booking.slot.mode === 'VIDEO' && (
+                    <a
+                      href={`/appointments/${booking.bookingId}/telehealth`}
+                      className="button secondary"
+                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                    >
+                      Enter Telehealth Consultation
+                    </a>
+                  )}
+                </div>
 
                 {message && <p style={{ color: 'red', marginTop: '0.5rem' }}>{message}</p>}
 
