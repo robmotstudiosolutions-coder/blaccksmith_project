@@ -137,6 +137,16 @@ function handleMockFallback(request: NextRequest, path: string[]): Response | nu
         ]
       });
     }
+    if (sub === 'audit' && request.method === 'GET') {
+      return Response.json({
+        events: [
+          { id: 'aud-001', action: 'BOOKING_CREATED', targetType: 'BOOKING', targetId: '00000000-0000-4000-8000-000000000601', outcome: 'SUCCESS', correlationId: 'SS-20481', occurredAt: new Date(Date.now() - 5 * 60000).toISOString() },
+          { id: 'aud-002', action: 'HOLD_CREATED', targetType: 'HOLD', targetId: '00000000-0000-4000-8000-000000000501', outcome: 'SUCCESS', correlationId: 'SS-HOLD-10492', occurredAt: new Date(Date.now() - 10 * 60000).toISOString() },
+          { id: 'aud-003', action: 'INVENTORY_RELEASED', targetType: 'SLOT', targetId: '00000000-0000-4000-8000-000000000401', outcome: 'SUCCESS', correlationId: 'SS-REL-88392', occurredAt: new Date(Date.now() - 25 * 60000).toISOString() },
+          { id: 'aud-004', action: 'BOOKING_CANCELLED', targetType: 'BOOKING', targetId: '00000000-0000-4000-8000-000000000600', outcome: 'PENDING_RELEASE', correlationId: 'SS-CAN-99182', occurredAt: new Date(Date.now() - 40 * 60000).toISOString() }
+        ]
+      });
+    }
     if (sub === 'slots' && path[3] === 'release' && request.method === 'POST') {
       return Response.json({ success: true, slotId: path[2], state: 'PUBLISHED' });
     }

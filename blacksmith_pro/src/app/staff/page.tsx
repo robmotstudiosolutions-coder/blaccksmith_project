@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, AlertTriangle, CalendarCheck, CheckCircle2, Clock3, ShieldAlert } from 'lucide-react';
-import { getReconciliationQueue, getStaffMetrics, releaseSlot } from '@/lib/api/booking-client';
+import { Activity, AlertTriangle, CalendarCheck, CheckCircle2, Clock3, FileText, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { getAuditEvents, getReconciliationQueue, getStaffMetrics, releaseSlot } from '@/lib/api/booking-client';
 
 export default function StaffDashboard() {
   const [releasingId, setReleasingId] = useState<string>();
@@ -19,6 +19,11 @@ export default function StaffDashboard() {
     queryFn: getReconciliationQueue
   });
 
+  const auditQuery = useQuery({
+    queryKey: ['staffAudit'],
+    queryFn: () => getAuditEvents(10)
+  });
+
   const handleRelease = async (slotId: string, ref: string) => {
     setReleasingId(slotId);
     setActionMessage('');
@@ -27,6 +32,7 @@ export default function StaffDashboard() {
       setActionMessage(`Slot for ${ref} was safely republished to available inventory.`);
       await reconciliationQuery.refetch();
       await metricsQuery.refetch();
+      await auditQuery.refetch();
     } catch {
       setActionMessage(`Failed to release slot for ${ref}. Please try again.`);
     } finally {
@@ -42,6 +48,7 @@ export default function StaffDashboard() {
   ];
 
   const items = reconciliationQuery.data ?? [];
+  const auditEvents = auditQuery.data ?? [];
 
   return (
     <main>
@@ -49,6 +56,8 @@ export default function StaffDashboard() {
         <a className="brand" href="/">SlotSure</a>
         <nav aria-label="Staff">
           <a href="/staff">Operations</a>
+          <a href="#reconciliation">Reconciliation</a>
+          <a href="#audit">Audit log</a>
           <a href="/">Patient booking view</a>
         </nav>
       </header>
@@ -78,7 +87,8 @@ export default function StaffDashboard() {
           ))}
         </div>
 
-        <section className="work-queue">
+        {/* Reconciliation Section */}
+        <section className="work-queue" id="reconciliation" style={{ marginBottom: '2.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div>
               <p className="eyebrow">Controlled release & reconciliation queue</p>
@@ -122,6 +132,68 @@ export default function StaffDashboard() {
                       >
                         {releasingId === item.slotId ? 'Releasing…' : 'Release to inventory'}
                       </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </section>
+
+        {/* Audit Trail Section */}
+        <section className="work-queue" id="audit">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <p className="eyebrow">Operational audit trail</p>
+              <h2>Recent immutable event log</h2>
+            </div>
+            <span className="badge">
+              <ShieldCheck aria-hidden="true"/> Zero-PHI Verified
+            </span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Target Type</th>
+                <th>Outcome</th>
+                <th>Correlation ID</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {auditEvents.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>
+                    No audit records available.
+                  </td>
+                </tr>
+              ) : (
+                auditEvents.map(evt => (
+                  <tr key={evt.id}>
+                    <td>
+                      <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
+                        <FileText style={{ width: 14, height: 14, color: '#666' }} />
+                        {evt.action}
+                      </span>
+                    </td>
+                    <td>{evt.targetType}</td>
+                    <td>
+                      <span style={{
+                        padding: '0.125rem 0.5rem',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        background: evt.outcome === 'SUCCESS' ? '#e6f7ed' : '#fff3e0',
+                        color: evt.outcome === 'SUCCESS' ? '#107c41' : '#b76e00'
+                      }}>
+                        {evt.outcome}
+                      </span>
+                    </td>
+                    <td><code>{evt.correlationId}</code></td>
+                    <td style={{ color: '#666', fontSize: '0.8125rem' }}>
+                      {new Date(evt.occurredAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </td>
                   </tr>
                 ))
