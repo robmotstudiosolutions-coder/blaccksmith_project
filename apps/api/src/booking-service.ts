@@ -10,6 +10,8 @@ export type ClinicItem = { id: string; name: string; hospitalName: string; locat
 export type AppointmentTypeItem = { id: string; clinicId: string; name: string; durationMinutes: number };
 export type StaffMetric = { label: string; value: string; note: string };
 export type ReconciliationItem = { id: string; slotId: string; safeReference: string; category: string; ageMinutes: number; nextSafeAction: string };
+export type AuditEventItem = { id: string; action: string; targetType: string; targetId: string | null; outcome: string; correlationId: string; occurredAt: string };
+
 
 export class BookingService {
   private readonly sql: any;
@@ -142,4 +144,23 @@ export class BookingService {
       nextSafeAction: 'Release slot back to public pool'
     }));
   }
+
+  async getAuditEvents(limit = 20): Promise<AuditEventItem[]> {
+    const rows = await this.sql<{ id: string; action: string; target_type: string; target_id: string | null; outcome: string; correlation_id: string; occurred_at: Date }[]>`
+      select id, action, target_type, target_id, outcome, correlation_id, occurred_at 
+      from audit_events 
+      order by occurred_at desc 
+      limit ${limit}
+    `;
+    return rows.map((r: { id: string; action: string; target_type: string; target_id: string | null; outcome: string; correlation_id: string; occurred_at: Date }) => ({
+      id: r.id,
+      action: r.action,
+      targetType: r.target_type,
+      targetId: r.target_id,
+      outcome: r.outcome,
+      correlationId: r.correlation_id,
+      occurredAt: r.occurred_at.toISOString()
+    }));
+  }
 }
+

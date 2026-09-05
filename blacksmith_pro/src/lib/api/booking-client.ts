@@ -9,6 +9,8 @@ export type Clinic = { id: string; name: string; hospitalName: string; locationR
 export type AppointmentType = { id: string; clinicId: string; name: string; durationMinutes: number };
 export type StaffMetric = { label: string; value: string; note: string };
 export type ReconciliationItem = { id: string; slotId: string; safeReference: string; category: string; ageMinutes: number; nextSafeAction: string };
+export type AuditEventItem = { id: string; action: string; targetType: string; targetId: string | null; outcome: string; correlationId: string; occurredAt: string };
+
 
 type ApiSlot = { slotId: string; clinicId: string; clinicName: string; appointmentTypeId: string; appointmentType: string; clinicianId: string | null; clinicianName: string | null; startsAt: string; endsAt: string; version: number; state: string };
 
@@ -75,3 +77,9 @@ export async function getReconciliationQueue(): Promise<ReconciliationItem[]> {
 export async function releaseSlot(slotId: string): Promise<{ success: boolean; slotId: string; state: 'PUBLISHED' }> {
   return request(`staff/slots/${slotId}/release`, { method: 'POST' });
 }
+
+export async function getAuditEvents(limit = 20): Promise<AuditEventItem[]> {
+  const result = await request<{ events: AuditEventItem[] }>(`staff/audit?limit=${limit}`);
+  return result.events;
+}
+
