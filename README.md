@@ -13,12 +13,16 @@ SlotSure is a hospital clinic-booking MVP. Its defining guarantee is that Postgr
 
 ## Architecture
 
-- `blacksmith_pro/`: existing Vite web client; product UI will be built after booking correctness.
+- `blacksmith_pro/`: Next.js App Router frontend with deterministic mock booking scenarios. The app currently provides the patient booking flow and a safe staff operations overview.
 - `apps/api/`: Fastify API and edge validation.
 - `packages/domain/`: product vocabulary and, next, state transitions and typed domain errors.
 - `packages/database/`: Drizzle schema, PostgreSQL migrations, and development-only seed data.
 
 The migration creates `one_active_booking_per_slot_idx`, a partial unique index covering `CONFIRMED` and `CANCEL_PENDING` bookings. The booking service will additionally use a transaction and controlled slot-state changes.
+
+## Frontend
+
+Run `npm run dev` for the frontend. In development, its scenario selector demonstrates a successful booking, competing request, expired hold, uncertain outcome resolution, and stale availability. It is not rendered in production builds. Run `npm run dev:api` separately for the API.
 
 ## Hospital decisions pending
 

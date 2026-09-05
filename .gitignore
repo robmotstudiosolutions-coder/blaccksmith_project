@@ -1,5 +1,7 @@
 node_modules
 dist
+.next
+.pnpm-store
 .env
 apps/api/package-lock.json
 packages/database/package-lock.json
