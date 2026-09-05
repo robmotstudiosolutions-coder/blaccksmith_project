@@ -4,14 +4,14 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 export type AppRole = 'PATIENT' | 'BOOKING_STAFF' | 'CLINIC_ADMIN' | 'CLINICIAN' | 'AUDITOR';
 export type SessionUser = { id: string; displayName: string; role: AppRole };
-type SessionContextValue = { user?: SessionUser; ready: boolean; signInPreview: (role: AppRole) => void; signOut: () => void };
+type SessionContextValue = { user?: SessionUser; ready: boolean; signInPreview: (role: AppRole, displayName?: string) => void; signOut: () => void };
 
 const storageKey = 'slotsure-preview-session';
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
 
-const previewUser = (role: AppRole): SessionUser => ({
+const previewUser = (role: AppRole, displayName?: string): SessionUser => ({
   id: `preview-${role.toLowerCase()}`,
-  displayName: role === 'PATIENT' ? 'Demo Patient' : 'Demo Booking Staff',
+  displayName: displayName?.trim() || (role === 'PATIENT' ? 'Demo Patient' : 'Demo Booking Staff'),
   role
 });
 
@@ -31,8 +31,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<SessionContextValue>(() => ({
     user,
     ready,
-    signInPreview: (role) => {
-      const next = previewUser(role);
+    signInPreview: (role, displayName) => {
+      const next = previewUser(role, displayName);
       window.sessionStorage.setItem(storageKey, JSON.stringify(next));
       setUser(next);
     },
