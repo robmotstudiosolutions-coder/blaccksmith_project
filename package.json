@@ -4,16 +4,28 @@
   "version": "0.1.0",
   "description": "SlotSure hospital clinic-booking MVP",
   "type": "module",
-  "workspaces": ["blacksmith_pro", "apps/*", "packages/*"],
+  "workspaces": [
+    "blacksmith_pro",
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace blacksmith_pro",
     "dev:web": "npm run dev --workspace blacksmith_pro",
-    "dev:api": "npm run dev --workspace @slotsure/api",
-    "build": "npm run build --workspaces --if-present",
+    "build:domain": "npm run build --workspace @slotsure/domain",
+    "build:database": "npm run build --workspace @slotsure/database",
+    "build:api": "npm run build --workspace @slotsure/api",
+    "dev:api": "npm run build:domain && npm run build:database && npm run dev --workspace @slotsure/api",
+    "build": "npm run build:domain && npm run build:database && npm run build:api && npm run build --workspace blacksmith_pro",
     "test": "npm run test --workspaces --if-present",
     "db:generate": "npm run db:generate --workspace @slotsure/database",
     "db:migrate": "npm run db:migrate --workspace @slotsure/database",
     "db:seed": "npm run db:seed --workspace @slotsure/database"
   },
-  "engines": { "node": ">=22.0.0" }
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@nodelib/fs.walk": "^1.2.8"
+  }
 }

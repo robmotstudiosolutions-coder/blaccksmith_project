@@ -1,9 +1,30 @@
 import Fastify from 'fastify';
+import { z } from 'zod';
+import { ApplicationError } from '../../../packages/domain/dist/index.js';
 import { loadConfig } from './config.js';
+import { BookingService } from './booking-service.js';
 
 const config = loadConfig();
 const app = Fastify({ logger: { level: config.LOG_LEVEL } });
+const bookingService = new BookingService(config.DATABASE_URL, config.HOLD_DURATION_SECONDS);
+const patientId = (headers: Record<string, unknown>): string => z.string().uuid().parse(headers['x-patient-id']);
+const idempotencyKey = (headers: Record<string, unknown>): string => z.string().min(8).max(160).parse(headers['idempotency-key']);
+
+app.setErrorHandler((error, request, reply) => {
+  if (error instanceof ApplicationError) return reply.status(error.statusCode).send({ code: error.code, message: error.message, retryable: error.retryable, correlationId: request.id, ...error.details });
+  if (error instanceof z.ZodError) return reply.status(400).send({ code: 'VALIDATION_ERROR', message: 'Please check the information provided.', retryable: false, correlationId: request.id });
+  request.log.error(error); return reply.status(500).send({ code: 'INTERNAL_ERROR', message: 'We could not complete that request. Please try again.', retryable: true, correlationId: request.id });
+});
+
 app.get('/health', async () => ({ status: 'ok', service: 'slotsure-api' }));
+app.get('/healthz', async () => ({ status: 'ok', service: 'slotsure-api' }));
+app.get('/v1/availability', async request => { const query = z.object({ clinicId: z.string().uuid(), appointmentTypeId: z.string().uuid() }).parse(request.query); return { slots: await bookingService.availability(query.clinicId, query.appointmentTypeId), authoritative: true }; });
+app.post('/v1/holds', async request => { const body = z.object({ slotId: z.string().uuid() }).parse(request.body); return bookingService.createHold(patientId(request.headers), body.slotId, idempotencyKey(request.headers)); });
+app.post('/v1/holds/:holdId/commit', async request => { const params = z.object({ holdId: z.string().uuid() }).parse(request.params); return bookingService.commitHold(patientId(request.headers), params.holdId, idempotencyKey(request.headers)); });
+app.post('/v1/bookings/:bookingId/cancel', async request => { const params = z.object({ bookingId: z.string().uuid() }).parse(request.params); return bookingService.cancelBooking(patientId(request.headers), params.bookingId, idempotencyKey(request.headers)); });
+app.get('/v1/booking-attempts/:idempotencyKey', async request => { const params = z.object({ idempotencyKey: z.string().min(8).max(160) }).parse(request.params); const result = await bookingService.attempt(patientId(request.headers), params.idempotencyKey); if (!result) throw new ApplicationError('BOOKING_STATE_UNKNOWN', 'We are still checking the booking status.', 202, true); return result; });
+app.get('/v1/alternatives', async request => { const query = z.object({ clinicId: z.string().uuid(), appointmentTypeId: z.string().uuid() }).parse(request.query); return { slots: await bookingService.alternatives(query.clinicId, query.appointmentTypeId) }; });
+app.addHook('onClose', async () => bookingService.close());
 const start = async (): Promise<void> => {
   try { await app.listen({ port: config.PORT, host: config.HOST }); }
   catch (error) { app.log.error(error, 'Unable to start SlotSure API'); process.exit(1); }
