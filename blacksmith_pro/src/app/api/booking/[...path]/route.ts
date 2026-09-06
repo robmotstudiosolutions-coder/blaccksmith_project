@@ -268,7 +268,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
       });
     }
 
-    if (response.status >= 500 && process.env.NODE_ENV !== 'production') {
+    if (response.status >= 500 && process.env.SLOTSURE_USE_MOCKS === 'true') {
       const mock = handleMockFallback(request, path);
       if (mock) return mock;
     }
@@ -278,7 +278,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
       headers: { 'content-type': response.headers.get('content-type') ?? 'application/json' }
     });
   } catch {
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.SLOTSURE_USE_MOCKS === 'true') {
       const mock = handleMockFallback(request, path);
       if (mock) return mock;
     }

@@ -38,7 +38,7 @@ export type TelehealthTokenResponse = {
 };
 
 
-type ApiSlot = { slotId: string; clinicId: string; clinicName: string; appointmentTypeId: string; appointmentType: string; clinicianId: string | null; clinicianName: string | null; startsAt: string; endsAt: string; version: number; state: string };
+type ApiSlot = { slotId: string; clinicId: string; clinicName: string; appointmentTypeId: string; appointmentType: string; mode: 'IN_PERSON' | 'VIDEO'; clinicianId: string | null; clinicianName: string | null; startsAt: string; endsAt: string; version: number; state: string };
 
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   let response: Response;
@@ -52,7 +52,7 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   return payload as T;
 };
 
-const toSlot = (slot: ApiSlot): Slot => ({ slotId: slot.slotId, slotVersion: slot.version, clinicId: slot.clinicId, clinicName: slot.clinicName, clinicianId: slot.clinicianId ?? 'unassigned', clinicianName: slot.clinicianName ?? 'Care team', appointmentTypeId: slot.appointmentTypeId, appointmentType: slot.appointmentType, startsAt: slot.startsAt, endsAt: slot.endsAt, mode: 'IN_PERSON', availabilityState: 'PROVISIONAL', freshnessState: 'FRESH', lastUpdatedAt: new Date().toISOString(), sourceAuthority: 'SLOTSURE' });
+const toSlot = (slot: ApiSlot): Slot => ({ slotId: slot.slotId, slotVersion: slot.version, clinicId: slot.clinicId, clinicName: slot.clinicName, clinicianId: slot.clinicianId ?? 'unassigned', clinicianName: slot.clinicianName ?? 'Care team', appointmentTypeId: slot.appointmentTypeId, appointmentType: slot.appointmentType, startsAt: slot.startsAt, endsAt: slot.endsAt, mode: slot.mode, availabilityState: 'PROVISIONAL', freshnessState: 'FRESH', lastUpdatedAt: new Date().toISOString(), sourceAuthority: 'SLOTSURE' });
 
 export async function getClinics(): Promise<Clinic[]> {
   const result = await request<{ clinics: Clinic[] }>('clinics');
@@ -136,4 +136,3 @@ export async function getTelehealthToken(bookingId: string): Promise<TelehealthT
     method: 'POST'
   });
 }
-

@@ -11,6 +11,8 @@ SlotSure is a hospital clinic-booking MVP. Its defining guarantee is that Postgr
 5. Seed non-production data: `npm run db:seed`.
 6. Run the API in one terminal: `npm run dev:api`. Run the web client in another: `npm run dev` (or `npm run dev:web`). The web app runs on port `3000` and proxies booking requests to the API on port `3001`.
 
+The development seed now creates 15 clinics, appointment types, clinicians, and three future slots per specialty. Re-run `npm run db:seed` after this update. Mock responses are disabled by default; set `SLOTSURE_USE_MOCKS=true` only for UI demonstrations that do not create real bookings.
+
 ## Architecture
 
 - `blacksmith_pro/`: Next.js App Router frontend with a same-origin server-side proxy to the Fastify booking API. It provides live development booking and a safe staff operations overview.
