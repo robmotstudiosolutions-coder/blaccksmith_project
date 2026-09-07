@@ -2,6 +2,8 @@
 
 SlotSure is a modern hospital clinic-booking platform designed for scale and clinical reliability. Its defining guarantee is that PostgreSQL and domain state machines enforce that an appointment slot can have no more than one active booking.
 
+The development seed now creates 15 clinics, appointment types, clinicians, and three future slots per specialty. Re-run `npm run db:seed` after this update. Mock responses are disabled by default; set `SLOTSURE_USE_MOCKS=true` only for UI demonstrations that do not create real bookings.
+
 ## Architecture
 
 The project is structured as a scalable, clean TypeScript monorepo with decoupled domain layers:

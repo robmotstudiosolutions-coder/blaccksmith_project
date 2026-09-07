@@ -2,7 +2,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { createDatabase } from '@slotsure/database';
 import { ApplicationError } from '@slotsure/domain';
 
-export type AvailabilitySlot = { slotId: string; clinicId: string; clinicName: string; appointmentTypeId: string; appointmentType: string; clinicianId: string | null; clinicianName: string | null; startsAt: string; endsAt: string; version: number; state: string };
+export type AvailabilitySlot = { slotId: string; clinicId: string; clinicName: string; appointmentTypeId: string; appointmentType: string; mode: 'IN_PERSON' | 'VIDEO'; clinicianId: string | null; clinicianName: string | null; startsAt: string; endsAt: string; version: number; state: string };
 export type HoldResult = { holdId: string; slotId: string; expiresAt: string; state: 'HELD' };
 export type BookingResult = { bookingId: string; status: 'CONFIRMED'; slotId: string; correlationId: string; replayed?: boolean };
 export type CancellationResult = { bookingId: string; status: 'CANCEL_PENDING'; slotId: string; correlationId: string; replayed?: boolean };
@@ -40,7 +40,7 @@ export class BookingService {
   async close(): Promise<void> { await this.sql.end(); }
 
   async availability(clinicId: string, appointmentTypeId: string): Promise<AvailabilitySlot[]> {
-    const rows = await this.sql<AvailabilitySlot[]>`select slots.id as "slotId", slots.clinic_id as "clinicId", clinics.name as "clinicName", slots.appointment_type_id as "appointmentTypeId", appointment_types.name as "appointmentType", slots.clinician_id as "clinicianId", clinicians.name as "clinicianName", slots.start_time as "startsAt", slots.end_time as "endsAt", slots.version, slots.state from slots inner join clinics on clinics.id = slots.clinic_id inner join appointment_types on appointment_types.id = slots.appointment_type_id left join clinicians on clinicians.id = slots.clinician_id where slots.clinic_id = ${clinicId} and slots.appointment_type_id = ${appointmentTypeId} and slots.state = 'PUBLISHED' and slots.start_time > now() order by slots.start_time`;
+    const rows = await this.sql<AvailabilitySlot[]>`select slots.id as "slotId", slots.clinic_id as "clinicId", clinics.name as "clinicName", slots.appointment_type_id as "appointmentTypeId", appointment_types.name as "appointmentType", appointment_types.mode, slots.clinician_id as "clinicianId", clinicians.name as "clinicianName", slots.start_time as "startsAt", slots.end_time as "endsAt", slots.version, slots.state from slots inner join clinics on clinics.id = slots.clinic_id inner join appointment_types on appointment_types.id = slots.appointment_type_id left join clinicians on clinicians.id = slots.clinician_id where slots.clinic_id = ${clinicId} and slots.appointment_type_id = ${appointmentTypeId} and slots.state = 'PUBLISHED' and slots.start_time > now() order by slots.start_time`;
     return rows;
   }
 
@@ -327,4 +327,3 @@ export class BookingService {
     return { publishedCount: slotIds.length, slotIds };
   }
 }
-
