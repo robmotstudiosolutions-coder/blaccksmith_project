@@ -7,9 +7,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
-      '@slotsure/domain': path.resolve(__dirname, '../../packages/domain/dist/index.js'),
-      '@slotsure/database/schema': path.resolve(__dirname, '../../packages/database/dist/schema.js'),
-      '@slotsure/database': path.resolve(__dirname, '../../packages/database/dist/index.js')
+      '@slotsure/domain': path.resolve(__dirname, '../../packages/domain/src/index.ts'),
+      '@slotsure/database/schema': path.resolve(__dirname, '../../packages/database/src/schema.ts'),
+      '@slotsure/database': path.resolve(__dirname, '../../packages/database/src/index.ts')
     }
   }
 });

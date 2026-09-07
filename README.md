@@ -1,33 +1,48 @@
 # SlotSure
 
-SlotSure is a hospital clinic-booking MVP. Its defining guarantee is that PostgreSQL, not the UI, enforces that a slot can have no more than one active booking.
-
-## Development setup
-
-1. Copy `.env.example` to `.env` and use its development-only values.
-2. Start PostgreSQL: `docker compose up -d postgres`.
-3. Install packages: `npm install`. This workspace now uses the npm lockfiles generated for the Next.js application; avoid mixing package managers in the same checkout.
-4. Apply migrations: `npm run db:migrate`.
-5. Seed non-production data: `npm run db:seed`.
-6. Run the API in one terminal: `npm run dev:api`. Run the web client in another: `npm run dev` (or `npm run dev:web`). The web app runs on port `3000` and proxies booking requests to the API on port `3001`.
+SlotSure is a modern hospital clinic-booking platform designed for scale and clinical reliability. Its defining guarantee is that PostgreSQL and domain state machines enforce that an appointment slot can have no more than one active booking.
 
 ## Architecture
 
-- `blacksmith_pro/`: Next.js App Router frontend with a same-origin server-side proxy to the Fastify booking API. It provides live development booking and a safe staff operations overview.
-- `apps/api/`: Fastify API and edge validation.
-- `packages/domain/`: product vocabulary and, next, state transitions and typed domain errors.
-- `packages/database/`: Drizzle schema, PostgreSQL migrations, and development-only seed data.
+The project is structured as a scalable, clean TypeScript monorepo with decoupled domain layers:
 
-The migration creates `one_active_booking_per_slot_idx`, a partial unique index covering `CONFIRMED` and `CANCEL_PENDING` bookings. The booking service will additionally use a transaction and controlled slot-state changes.
+```text
+├── apps/
+│   ├── web/               # Next.js 16 (Turbopack) frontend with patient & staff portals (@slotsure/web)
+│   └── api/               # Fastify REST API with modular plugins, RBAC, and error handlers (@slotsure/api)
+├── packages/
+│   ├── domain/            # Core business models, slot state machine, and typed errors (@slotsure/domain)
+│   └── database/          # Drizzle schema, cross-platform migrations, and test seeds (@slotsure/database)
+└── tsconfig.base.json     # Standardized modern TypeScript configuration
+```
 
-## Frontend
+## Development Setup
 
-Run `npm run dev` for the frontend and `npm run dev:api` separately for the API. The patient screen now uses live API availability, holds, idempotent commits, and typed error states. Its development identity is held server-side by the Next proxy and must be replaced with an approved identity-provider integration before production.
+1. **Environment**: Copy `.env.example` to `.env` and use development values.
+2. **Start Database**: `docker compose up -d postgres`.
+3. **Install Dependencies**: `npm install`.
+4. **Apply Migrations**: `npm run db:migrate`.
+5. **Seed Non-Production Data**: `npm run db:seed`.
+6. **Start Dev Servers**:
+   - Web Client (`http://localhost:3000`): `npm run dev` (or `npm run dev:web`)
+   - Booking API (`http://localhost:3001`): `npm run dev:api`
 
-## Atomic booking API
+## Monorepo Scripts
 
-The authoritative API exposes `GET /healthz`, `GET /v1/availability`, `POST /v1/holds`, `POST /v1/holds/:holdId/commit`, `POST /v1/bookings/:bookingId/cancel`, `GET /v1/booking-attempts/:idempotencyKey`, and `GET /v1/alternatives`. Mutations require `Idempotency-Key` and the development-only `X-Patient-Id` header. The commit transaction locks hold then slot rows, commits booking/audit/idempotency outcome together, and relies on PostgreSQL's active-booking unique index as a final duplicate-allocation guard. Cancellation enters `CANCEL_PENDING`; a separate controlled-release worker/action must safely republish inventory.
+| Command | Action |
+| --- | --- |
+| `npm run dev` | Runs the Next.js web application (`apps/web`) |
+| `npm run dev:api` | Builds dependencies and starts Fastify API with hot reload (`apps/api`) |
+| `npm run build` | Compiles domain, database, API, and web packages |
+| `npm run test` | Executes unit and integration test suites across all workspaces |
+| `npm run typecheck` | Validates TypeScript types across all workspaces with zero emit |
+| `npm run db:migrate` | Runs Drizzle migrations against PostgreSQL |
+| `npm run db:seed` | Seeds test hospital, clinic, and patient data |
 
-## Hospital decisions pending
+## Atomic Booking Guarantee
 
-Identity provider, final caregiver authorization, hold duration, cancellation/rescheduling policies, clinical eligibility/referral rules, notification channels, EHR integration, production infrastructure, and regulatory requirements remain **TBD — Hospital Decision Required**. Development seeds contain fictional identities only.
+The authoritative API exposes `/v1/availability`, `/v1/holds`, `/v1/holds/:holdId/commit`, `/v1/bookings/:bookingId/cancel`, and `/v1/alternatives`.
+- Mutations enforce `Idempotency-Key` tracking and cryptographic hashing.
+- Commit transactions lock hold and slot rows atomically.
+- PostgreSQL's `one_active_booking_per_slot_idx` unique index serves as a final database-level guarantee against double booking.
+- Cancellations enter `CANCEL_PENDING`, preventing immediate premature reissue without hospital audit verification.

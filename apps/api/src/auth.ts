@@ -1,7 +1,7 @@
 import { FastifyRequest } from 'fastify';
 import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
 import { z } from 'zod';
-import { ApplicationError, UserRole } from '../../../packages/domain/dist/index.js';
+import { ApplicationError, UserRole } from '@slotsure/domain';
 
 export type AuthenticatedUser = {
   id: string;

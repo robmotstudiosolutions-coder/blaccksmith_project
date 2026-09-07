@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from 'node:crypto';
-import { createDatabase } from '../../../packages/database/dist/index.js';
-import { ApplicationError } from '../../../packages/domain/dist/index.js';
+import { createDatabase } from '@slotsure/database';
+import { ApplicationError } from '@slotsure/domain';
 
 export type AvailabilitySlot = { slotId: string; clinicId: string; clinicName: string; appointmentTypeId: string; appointmentType: string; clinicianId: string | null; clinicianName: string | null; startsAt: string; endsAt: string; version: number; state: string };
 export type HoldResult = { holdId: string; slotId: string; expiresAt: string; state: 'HELD' };

@@ -3,6 +3,9 @@ dist
 .next
 .pnpm-store
 .env
+*.tsbuildinfo
+.turbo
 apps/api/package-lock.json
 packages/database/package-lock.json
+apps/web/package-lock.json
 apps/api/pnpm-lock.yaml

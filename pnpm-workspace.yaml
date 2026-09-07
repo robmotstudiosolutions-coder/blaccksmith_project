@@ -1,6 +1,0 @@
-packages:
-  - blacksmith_pro
-  - apps/*
-  - packages/*
-allowBuilds:
-  esbuild: true

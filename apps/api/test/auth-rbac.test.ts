@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { hashPassword, verifyPassword, hashToken, SessionAuthProvider, DevelopmentAuthProvider } from '../src/auth.js';
-import { ApplicationError } from '../../../packages/domain/dist/index.js';
+import { ApplicationError } from '@slotsure/domain';
 import { buildApp } from '../src/app.js';
 
 describe('Auth & Cryptographic Integrity', () => {
