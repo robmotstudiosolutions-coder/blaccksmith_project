@@ -72,7 +72,7 @@ export async function registerAuthRoutes(
 
       await sql`
         insert into sessions (id, user_id, token_hash, expires_at)
-        values (${sessionId}, ${user.id}, ${tokenH}, ${expiresAt})
+        values (${sessionId}, ${user.id}, ${tokenH}, ${expiresAt.toISOString()})
       `;
 
       return {

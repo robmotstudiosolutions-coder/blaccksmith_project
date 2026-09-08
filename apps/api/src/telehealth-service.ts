@@ -158,8 +158,8 @@ export class TelehealthService {
       participantId: userId,
       participantName,
       role: isClinician ? 'CLINICIAN' : isStaff ? 'OBSERVER' : 'PATIENT',
-      appointmentStartTime: booking.startTime.toISOString(),
-      appointmentEndTime: booking.endTime.toISOString(),
+      appointmentStartTime: new Date(booking.startTime).toISOString(),
+      appointmentEndTime: new Date(booking.endTime).toISOString(),
       expiresAt: new Date(Date.now() + 7200 * 1000).toISOString()
     };
   }

@@ -104,8 +104,8 @@ export class BookingService {
       clinicianName: string | null;
       appointmentType: string;
       mode: 'IN_PERSON' | 'VIDEO';
-      startsAt: Date;
-      endsAt: Date;
+      startsAt: Date | string;
+      endsAt: Date | string;
       status: string;
     }) => {
       const startMs = new Date(r.startsAt).getTime();
@@ -123,8 +123,8 @@ export class BookingService {
         clinicianName: r.clinicianName ?? 'Attending Clinician',
         appointmentType: r.appointmentType,
         mode: r.mode,
-        startsAt: r.startsAt.toISOString(),
-        endsAt: r.endsAt.toISOString(),
+        startsAt: new Date(r.startsAt).toISOString(),
+        endsAt: new Date(r.endsAt).toISOString(),
         status: r.status,
         canJoinVideo,
         videoOpensAt: isVideo ? new Date(opensAtMs).toISOString() : undefined
@@ -190,7 +190,7 @@ export class BookingService {
       const expiresAt = new Date(Date.now() + this.holdSeconds * 1000);
       const id = randomUUID();
       await sql`update slots set state = 'HELD', version = version + 1, updated_at = now() where id = ${slotId}`;
-      await sql`insert into holds (id, slot_id, patient_id, idempotency_key, expires_at) values (${id}, ${slotId}, ${patientId}, ${key}, ${expiresAt})`;
+      await sql`insert into holds (id, slot_id, patient_id, idempotency_key, expires_at) values (${id}, ${slotId}, ${patientId}, ${key}, ${expiresAt.toISOString()})`;
       await sql`insert into audit_events (action, target_type, target_id, outcome, correlation_id) values ('HOLD_CREATED', 'HOLD', ${id}, 'SUCCESS', ${key})`;
       return { holdId: id, slotId, expiresAt: expiresAt.toISOString(), state: 'HELD' };
     });
@@ -298,14 +298,14 @@ export class BookingService {
       order by occurred_at desc 
       limit ${limit}
     `;
-    return rows.map((r: { id: string; action: string; target_type: string; target_id: string | null; outcome: string; correlation_id: string; occurred_at: Date }) => ({
+    return rows.map((r: { id: string; action: string; target_type: string; target_id: string | null; outcome: string; correlation_id: string; occurred_at: Date | string }) => ({
       id: r.id,
       action: r.action,
       targetType: r.target_type,
       targetId: r.target_id,
       outcome: r.outcome,
       correlationId: r.correlation_id,
-      occurredAt: r.occurred_at.toISOString()
+      occurredAt: new Date(r.occurred_at).toISOString()
     }));
   }
 
@@ -317,7 +317,7 @@ export class BookingService {
       slotIds.push(id);
       await this.sql`
         insert into slots (id, clinic_id, appointment_type_id, clinician_id, start_time, end_time, state, version)
-        values (${id}, ${slot.clinicId}, ${slot.appointmentTypeId}, ${slot.clinicianId ?? null}, ${new Date(slot.startTime)}, ${new Date(slot.endTime)}, 'PUBLISHED', 1)
+        values (${id}, ${slot.clinicId}, ${slot.appointmentTypeId}, ${slot.clinicianId ?? null}, ${new Date(slot.startTime).toISOString()}, ${new Date(slot.endTime).toISOString()}, 'PUBLISHED', 1)
       `;
     }
     await this.sql`
