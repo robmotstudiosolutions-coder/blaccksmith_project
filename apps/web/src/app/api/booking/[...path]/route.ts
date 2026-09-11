@@ -225,8 +225,81 @@ function handleMockFallback(request: NextRequest, path: string[]): Response | nu
     }
   }
 
+  // ── Clinician endpoints ─────────────────────────────────────────────────────
+  if (endpoint === 'clinicians' && path.length >= 3) {
+    const _clinicianId = path[1];
+    const subEndpoint = path[2];
+    const now = new Date();
+    const at = (offsetMinutes: number) => new Date(now.getTime() + offsetMinutes * 60_000).toISOString();
+
+    if (subEndpoint === 'profile' && request.method === 'GET') {
+      return Response.json({
+        clinician: {
+          clinicianId: _clinicianId,
+          displayName: 'Dr. Sarah Adebayo',
+          title: 'Consultant Cardiologist',
+          specialty: 'Cardiology',
+          clinicId: '00000000-0000-4000-8000-000000000101',
+          clinicName: 'Cardiology Clinic — Main Hospital',
+          availabilityStatus: 'AVAILABLE',
+          shiftStartsAt: at(-120),
+          shiftEndsAt: at(300),
+        }
+      });
+    }
+
+    if (subEndpoint === 'schedule' && request.method === 'GET') {
+      return Response.json({
+        schedule: [
+          { scheduleItemId: 'si-001', safePatientReference: 'SS-PT-4821', patientInitials: 'J.D.', appointmentType: 'Initial cardiology consultation', mode: 'IN_CLINIC', status: 'IN_PROGRESS', startsAt: at(-10), endsAt: at(20), waitingMinutes: 10, nextAction: 'COMPLETE_ENCOUNTER', encounterId: 'enc-001' },
+          { scheduleItemId: 'si-002', safePatientReference: 'SS-PT-5139', patientInitials: 'M.S.', appointmentType: 'Cardiology follow-up', mode: 'VIDEO', status: 'CHECKED_IN', startsAt: at(25), endsAt: at(55), waitingMinutes: 5, nextAction: 'JOIN_VIDEO', videoRoomReady: true },
+          { scheduleItemId: 'si-003', safePatientReference: 'SS-PT-6742', patientInitials: 'A.K.', appointmentType: 'ECG review', mode: 'IN_CLINIC', status: 'SCHEDULED', startsAt: at(60), endsAt: at(90), nextAction: 'AWAIT_CHECK_IN' },
+          { scheduleItemId: 'si-004', safePatientReference: 'SS-PT-3387', patientInitials: 'R.B.', appointmentType: 'Initial cardiology consultation', mode: 'VIDEO', status: 'SCHEDULED', startsAt: at(100), endsAt: at(130), nextAction: 'AWAIT_CHECK_IN', videoRoomReady: false },
+          { scheduleItemId: 'si-005', safePatientReference: 'SS-PT-7201', patientInitials: 'L.T.', appointmentType: 'Cardiology follow-up', mode: 'IN_CLINIC', status: 'COMPLETED', startsAt: at(-90), endsAt: at(-60), nextAction: 'VIEW_COMPLETED', encounterId: 'enc-005' },
+        ]
+      });
+    }
+
+    if (subEndpoint === 'queue' && request.method === 'GET') {
+      return Response.json({
+        queue: [
+          { queueId: 'q-001', safePatientReference: 'SS-PT-4821', patientInitials: 'J.D.', appointmentType: 'Initial cardiology consultation', mode: 'IN_CLINIC', status: 'READY', checkedInAt: at(-15), waitingMinutes: 15, scheduleItemId: 'si-001' },
+          { queueId: 'q-002', safePatientReference: 'SS-PT-5139', patientInitials: 'M.S.', appointmentType: 'Cardiology follow-up', mode: 'VIDEO', status: 'CHECKED_IN', checkedInAt: at(-5), waitingMinutes: 5, scheduleItemId: 'si-002' },
+        ]
+      });
+    }
+
+    if (subEndpoint === 'metrics' && request.method === 'GET') {
+      return Response.json({
+        metrics: { appointmentsToday: 8, patientsWaiting: 2, roomsReady: 1, remainingVisits: 3 }
+      });
+    }
+
+    if (subEndpoint === 'readiness' && request.method === 'GET') {
+      return Response.json({
+        readiness: { videoServiceStatus: 'READY', clinicianDeviceStatus: 'READY', realtimeSyncStatus: 'READY', networkQuality: 'GOOD', lastCheckedAt: now.toISOString() }
+      });
+    }
+
+    if (subEndpoint === 'availability' && request.method === 'POST') {
+      return Response.json({ success: true });
+    }
+  }
+
+  // ── Schedule item actions ────────────────────────────────────────────────────
+  if (endpoint === 'schedule-items' && path.length >= 3) {
+    const action = path[2];
+    if (action === 'start-encounter' && request.method === 'POST') {
+      return Response.json({ encounterId: `enc-${path[1].slice(0, 6)}` });
+    }
+    if (action === 'attendance' && request.method === 'POST') {
+      return Response.json({ success: true });
+    }
+  }
+
   return null;
 }
+
 
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   let path: string[] = [];

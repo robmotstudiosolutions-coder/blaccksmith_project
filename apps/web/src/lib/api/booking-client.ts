@@ -136,3 +136,36 @@ export async function getTelehealthToken(bookingId: string): Promise<TelehealthT
     method: 'POST'
   });
 }
+
+/**
+ * Poll the outcome of a booking attempt by idempotency key.
+ * Used to resolve PENDING_RESOLUTION state after network failure.
+ * Returns the booking if confirmed, or null/throws if still pending or race-lost.
+ */
+export async function getBookingAttempt(idempotencyKey: string): Promise<import('@/types/booking').Booking | null> {
+  try {
+    const result = await request<{ bookingId?: string; status?: string; correlationId?: string; outcome?: string }>(
+      `booking-attempts/${idempotencyKey}`
+    );
+    if (result.status === 'CONFIRMED' && result.bookingId) {
+      // Reconstruct a minimal booking object from the attempt response
+      return {
+        bookingId: result.bookingId,
+        reference: result.correlationId ?? idempotencyKey,
+        // Slot details come from local state; server confirms the booking only
+        slot: null as unknown as import('@/types/booking').Slot,
+        status: 'CONFIRMED',
+        createdAt: new Date().toISOString(),
+      };
+    }
+    if (result.outcome === 'RACE_LOST') {
+      throw { code: 'BOOKING_OUTCOME_RACE_LOST', message: 'That appointment was taken. No booking was created.', retryable: false, bookingCreated: false, correlationId: idempotencyKey };
+    }
+    return null; // Still pending
+  } catch (err) {
+    const apiErr = err as { code?: string };
+    if (apiErr.code === 'BOOKING_OUTCOME_RACE_LOST') throw err;
+    return null;
+  }
+}
+

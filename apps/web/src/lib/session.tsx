@@ -1,18 +1,37 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import type { AppRole } from '@/types/booking';
 
-export type AppRole = 'PATIENT' | 'BOOKING_STAFF' | 'CLINIC_ADMIN' | 'CLINICIAN' | 'AUDITOR';
+export type { AppRole };
 export type SessionUser = { id: string; displayName: string; role: AppRole };
-type SessionContextValue = { user?: SessionUser; ready: boolean; signInPreview: (role: AppRole, displayName?: string) => void; signOut: () => void };
+type SessionContextValue = {
+  user?: SessionUser;
+  ready: boolean;
+  signInPreview: (role: AppRole, displayName?: string) => void;
+  signOut: () => void;
+};
 
 const storageKey = 'slotsure-preview-session';
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
 
+const previewDisplayName = (role: AppRole): string => {
+  const names: Record<AppRole, string> = {
+    PATIENT: 'Demo Patient',
+    CAREGIVER: 'Demo Caregiver',
+    BOOKING_STAFF: 'Demo Booking Staff',
+    CLINICIAN: 'Dr. Demo Clinician',
+    CLINIC_ADMIN: 'Demo Clinic Admin',
+    OPERATIONS_MANAGER: 'Demo Ops Manager',
+    AUDITOR: 'Demo Auditor',
+  };
+  return names[role] ?? 'Demo User';
+};
+
 const previewUser = (role: AppRole, displayName?: string): SessionUser => ({
   id: `preview-${role.toLowerCase()}`,
-  displayName: displayName?.trim() || (role === 'PATIENT' ? 'Demo Patient' : 'Demo Booking Staff'),
-  role
+  displayName: displayName?.trim() || previewDisplayName(role),
+  role,
 });
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -39,7 +58,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     signOut: () => {
       window.sessionStorage.removeItem(storageKey);
       setUser(undefined);
-    }
+      // Redirect to signed-out confirmation page, not a protected gate
+      window.location.assign('/signed-out');
+    },
   }), [ready, user]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
@@ -51,4 +72,10 @@ export function useSession(): SessionContextValue {
   return context;
 }
 
-export const isStaffRole = (role?: AppRole): boolean => role === 'BOOKING_STAFF' || role === 'CLINIC_ADMIN' || role === 'CLINICIAN' || role === 'AUDITOR';
+/** Legacy helper – now delegates to permissions.ts isStaffRole. */
+export const isStaffRole = (role?: AppRole): boolean =>
+  role === 'BOOKING_STAFF' ||
+  role === 'CLINIC_ADMIN' ||
+  role === 'CLINICIAN' ||
+  role === 'OPERATIONS_MANAGER' ||
+  role === 'AUDITOR';
