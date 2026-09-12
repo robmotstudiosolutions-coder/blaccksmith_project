@@ -13,6 +13,8 @@ describe('Domain Package - Core Domain Logic & State Machine', () => {
     expect(userRoles).toContain('PATIENT');
     expect(userRoles).toContain('BOOKING_STAFF');
     expect(userRoles).toContain('CLINIC_ADMIN');
+    expect(userRoles).toContain('OPERATIONS_MANAGER');
+    expect(userRoles).toContain('AUDITOR');
     expect(slotStates).toContain('PUBLISHED');
     expect(slotStates).toContain('HELD');
     expect(slotStates).toContain('BOOKED');

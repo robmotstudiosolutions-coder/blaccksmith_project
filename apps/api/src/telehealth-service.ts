@@ -1,5 +1,5 @@
 import { randomUUID, createHmac } from 'node:crypto';
-import { ApplicationError, UserRole } from '../../../packages/domain/dist/index.js';
+import { ApplicationError, UserRole, isStaffRole } from '@slotsure/domain';
 
 export type TelehealthSessionInfo = {
   bookingId: string;
@@ -104,7 +104,7 @@ export class TelehealthService {
     // Check authorization: Must be patient, assigned clinician, or staff/admin
     const isPatient = booking.patientId === userId;
     const isClinician = booking.clinicianId === userId || userRole === 'CLINICIAN';
-    const isStaff = userRole === 'BOOKING_STAFF' || userRole === 'CLINIC_ADMIN' || userRole === 'SYSTEM_ADMIN';
+    const isStaff = isStaffRole(userRole);
 
     if (!isPatient && !isClinician && !isStaff) {
       throw new ApplicationError('TELEHEALTH_UNAUTHORIZED', 'You are not authorized to join this consultation room.', 403);

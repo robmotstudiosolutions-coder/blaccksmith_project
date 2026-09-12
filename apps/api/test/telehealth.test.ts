@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { TelehealthService, VideoTokenProvider } from '../src/telehealth-service.js';
-import { ApplicationError } from '../../../packages/domain/dist/index.js';
+import { ApplicationError } from '@slotsure/domain';
 
 class MockTokenProvider implements VideoTokenProvider {
   async createToken(roomName: string, participantId: string, participantName: string, isClinician: boolean): Promise<string> {

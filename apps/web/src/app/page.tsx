@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
 import { AppHeader } from '@/components/app-header';
@@ -15,7 +15,8 @@ import {
 import { SpecialtyDirectory } from '@/features/catalog/components/specialty-directory';
 import { SearchPanel } from '@/features/catalog/components/search-panel';
 import { BookingResults } from '@/features/booking/components/booking-results';
-import { useBookingFlow } from '@/features/booking/hooks/use-booking-flow';
+import { useSharedBooking } from '@/features/booking/hooks/use-shared-booking';
+import type { BookingContext } from '@/types/booking';
 
 export default function Home() {
   const { user } = useSession();
@@ -64,13 +65,25 @@ export default function Home() {
     }
   }, [typesQuery.data, selectedTypeId]);
 
-  // Booking Flow Hook
-  const bookingFlow = useBookingFlow(
-    user,
+  // Shared Booking Context for patient / caregiver
+  const bookingContext: BookingContext = useMemo(() => {
+    const isCaregiver = user?.role === 'CAREGIVER';
+    return {
+      tenantId: 'main-hospital',
+      actorId: user?.id ?? 'guest-patient',
+      actorRole: isCaregiver ? 'CAREGIVER' : 'PATIENT',
+      subjectPatientId: user?.id ?? 'guest-patient',
+      authorizationBasis: isCaregiver ? 'CAREGIVER_DELEGATION' : 'SELF',
+    };
+  }, [user]);
+
+  // Universal Booking Flow Hook
+  const bookingFlow = useSharedBooking({
     selectedClinicId,
     selectedTypeId,
-    async () => availability.refetch()
-  );
+    bookingContext,
+    onAvailabilityRefetch: async () => availability.refetch()
+  });
 
   const handleSelectSpecialty = (specialty: Specialty) => {
     setSelectedClinicId(specialty.clinicId ?? `directory:${specialty.name}`);
@@ -124,6 +137,11 @@ export default function Home() {
         onSelectSpecialty={handleSelectSpecialty}
         directoryMessage={directoryMessage}
       />
+
+      {/* Live announcement for screen readers */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {bookingFlow.announcement}
+      </div>
 
       {/* Booking Search & Results Layout */}
       <section className="layout" id="appointments">

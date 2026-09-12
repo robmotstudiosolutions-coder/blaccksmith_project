@@ -11,7 +11,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LockKeyhole } from 'lucide-react';
+import { AccessGate } from '@/components/access-gate';
 import { AppHeader } from '@/components/app-header';
 import { useSession } from '@/lib/session';
 import {
@@ -319,42 +319,9 @@ function ClinicianWorkspace() {
 // ── Access gate ────────────────────────────────────────────────────────────────
 
 export default function ClinicianPage() {
-  const { ready, user } = useSession();
-
-  if (!ready) {
-    return (
-      <main>
-        <AppHeader />
-        <section className="centered-page" aria-busy="true">
-          <p>Checking your session…</p>
-        </section>
-      </main>
-    );
-  }
-
-  if (!user || (user.role !== 'CLINICIAN' && user.role !== 'CLINIC_ADMIN')) {
-    return (
-      <main>
-        <AppHeader />
-        <section className="centered-page">
-          <div className="access-card">
-            <LockKeyhole aria-hidden="true" />
-            <p className="eyebrow">Secure area</p>
-            <h1>Clinician access required</h1>
-            <p>
-              This workspace is for authorised clinicians.
-              Sign in with a clinician account to continue.
-            </p>
-            <a className="button" href="/sign-in">Go to sign in</a>
-            <p className="small">
-              Server-side session validation is enforced at the API layer.
-              This UI gate is an additional display-layer safeguard.
-            </p>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  return <ClinicianWorkspace />;
+  return (
+    <AccessGate permission="clinician:view_schedule">
+      <ClinicianWorkspace />
+    </AccessGate>
+  );
 }

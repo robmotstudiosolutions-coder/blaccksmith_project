@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 
-export const userRole = pgEnum('user_role', ['PATIENT', 'CAREGIVER', 'CLINICIAN', 'BOOKING_STAFF', 'CLINIC_ADMIN', 'SYSTEM_ADMIN']);
+export const userRole = pgEnum('user_role', ['PATIENT', 'CAREGIVER', 'CLINICIAN', 'BOOKING_STAFF', 'CLINIC_ADMIN', 'OPERATIONS_MANAGER', 'AUDITOR', 'SYSTEM_ADMIN']);
 export const slotState = pgEnum('slot_state', ['PUBLISHED', 'HELD', 'BOOKED', 'EXPIRED', 'BLOCKED', 'CANCEL_PENDING', 'RELEASE_PENDING', 'ERROR']);
 export const holdStatus = pgEnum('hold_status', ['ACTIVE', 'COMMITTED', 'EXPIRED', 'RELEASED']);
 export const bookingStatus = pgEnum('booking_status', ['CONFIRMED', 'CANCEL_PENDING', 'CANCELLED', 'RESCHEDULED', 'ERROR']);

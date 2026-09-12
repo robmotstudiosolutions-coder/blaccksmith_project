@@ -469,7 +469,13 @@ function AccountContent() {
 
 export default function AccountPage() {
   return (
-    <AccessGate>
+    <AccessGate
+      allowedRoles={['PATIENT', 'CAREGIVER']}
+      title="Patient portal access"
+      description="This portal is for patients and authorized caregivers to view and manage appointments. Hospital staff and clinicians should use their dedicated workspaces."
+      fallbackHref="/staff"
+      fallbackLabel="Go to staff portal"
+    >
       <AccountContent />
     </AccessGate>
   );

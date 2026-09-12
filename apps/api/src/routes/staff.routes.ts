@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { ApplicationError } from '@slotsure/domain';
+import { ApplicationError, isStaffRole } from '@slotsure/domain';
 import { BookingService } from '../booking-service.js';
 import { AuthProvider } from '../auth.js';
 
@@ -15,7 +15,7 @@ export async function registerStaffRoutes(
 
   const assertStaff = async (request: FastifyRequest) => {
     const user = await authProvider.authenticate(request);
-    if (user.role === 'PATIENT') {
+    if (!isStaffRole(user.role)) {
       throw new ApplicationError('FORBIDDEN', 'Access denied to staff operations.', 403);
     }
     return user;
@@ -40,14 +40,21 @@ export async function registerStaffRoutes(
   });
 
   app.post('/v1/staff/slots/:slotId/release', async (request: FastifyRequest) => {
-    await assertStaff(request);
+    const user = await assertStaff(request);
+    if (user.role === 'AUDITOR') {
+      throw new ApplicationError('FORBIDDEN', 'Auditor role cannot modify slot capacity.', 403);
+    }
     const params = z.object({ slotId: z.string().uuid() }).parse(request.params);
     await bookingService.releaseCancelledSlot(params.slotId);
     return { success: true, slotId: params.slotId, state: 'PUBLISHED' };
   });
 
   app.post('/v1/staff/slots/publish', async (request: FastifyRequest) => {
-    await assertStaff(request);
+    const user = await assertStaff(request);
+    const allowedPublishRoles = ['CLINIC_ADMIN', 'OPERATIONS_MANAGER', 'SYSTEM_ADMIN'];
+    if (!allowedPublishRoles.includes(user.role)) {
+      throw new ApplicationError('FORBIDDEN', 'Your role cannot publish new slot capacity.', 403);
+    }
     const body = z
       .object({
         slots: z.array(

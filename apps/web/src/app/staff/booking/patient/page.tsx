@@ -43,22 +43,7 @@ function PatientSelectionWorkspace() {
     defaultValues: { verificationAcknowledged: undefined },
   });
 
-  // Permission check: staff must be able to verify patient
-  if (!can(user?.role, 'staff:verify_patient', 'staff_workspace')) {
-    return (
-      <main>
-        <AppHeader staff />
-        <section className="centered-page">
-          <div className="access-card">
-            <p className="eyebrow">Insufficient permissions</p>
-            <h1>Verification not permitted</h1>
-            <p>Your role does not permit patient verification for assisted booking.</p>
-            <a className="button" href="/staff">Back to operations</a>
-          </div>
-        </section>
-      </main>
-    );
-  }
+
 
   const onSubmit = (data: PatientSearchForm) => {
     // Store verified reference and redirect to search
@@ -161,7 +146,14 @@ function PatientSelectionWorkspace() {
 
 export default function StaffBookingPatientPage() {
   return (
-    <AccessGate requireStaff>
+    <AccessGate
+      permission="staff:verify_patient"
+      resource="staff_workspace"
+      title="Verification not permitted"
+      description="Your role does not permit patient verification for assisted booking."
+      fallbackHref="/staff"
+      fallbackLabel="Back to operations"
+    >
       <PatientSelectionWorkspace />
     </AccessGate>
   );

@@ -16,13 +16,14 @@ import { useSession } from '@/lib/session';
 
 // Role display names for preview mode only
 const previewRoles: Array<{ value: AppRole; label: string }> = [
-  { value: 'PATIENT',           label: 'Patient' },
-  { value: 'CAREGIVER',         label: 'Authorized caregiver' },
-  { value: 'BOOKING_STAFF',     label: 'Booking staff / Scheduler' },
-  { value: 'CLINICIAN',         label: 'Clinician' },
-  { value: 'CLINIC_ADMIN',      label: 'Clinic administrator' },
+  { value: 'PATIENT',            label: 'Patient' },
+  { value: 'CAREGIVER',          label: 'Authorized caregiver' },
+  { value: 'BOOKING_STAFF',      label: 'Booking staff / Scheduler' },
+  { value: 'CLINICIAN',          label: 'Clinician' },
+  { value: 'CLINIC_ADMIN',       label: 'Clinic administrator' },
   { value: 'OPERATIONS_MANAGER', label: 'Operations manager' },
-  { value: 'AUDITOR',           label: 'System / Security auditor' },
+  { value: 'AUDITOR',            label: 'System / Security auditor' },
+  { value: 'SYSTEM_ADMIN',       label: 'System administrator' },
 ];
 
 const roleDestination = (role: AppRole): string => {
@@ -30,7 +31,8 @@ const roleDestination = (role: AppRole): string => {
     case 'CLINICIAN':          return '/clinician';
     case 'BOOKING_STAFF':
     case 'CLINIC_ADMIN':
-    case 'OPERATIONS_MANAGER': return '/staff';
+    case 'OPERATIONS_MANAGER':
+    case 'SYSTEM_ADMIN':       return '/staff';
     case 'AUDITOR':            return '/staff#audit';
     default:                   return '/';
   }

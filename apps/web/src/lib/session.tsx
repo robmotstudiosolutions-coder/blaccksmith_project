@@ -24,6 +24,7 @@ const previewDisplayName = (role: AppRole): string => {
     CLINIC_ADMIN: 'Demo Clinic Admin',
     OPERATIONS_MANAGER: 'Demo Ops Manager',
     AUDITOR: 'Demo Auditor',
+    SYSTEM_ADMIN: 'Demo System Admin',
   };
   return names[role] ?? 'Demo User';
 };
@@ -72,10 +73,4 @@ export function useSession(): SessionContextValue {
   return context;
 }
 
-/** Legacy helper – now delegates to permissions.ts isStaffRole. */
-export const isStaffRole = (role?: AppRole): boolean =>
-  role === 'BOOKING_STAFF' ||
-  role === 'CLINIC_ADMIN' ||
-  role === 'CLINICIAN' ||
-  role === 'OPERATIONS_MANAGER' ||
-  role === 'AUDITOR';
+export { isStaffRole } from '@/lib/permissions';

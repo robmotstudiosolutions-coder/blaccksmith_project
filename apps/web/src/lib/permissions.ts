@@ -154,6 +154,27 @@ const ALLOWED: Partial<Record<AppRole, readonly PermissionAction[]>> = {
     'audit:search',
     'audit:export',
   ],
+
+  SYSTEM_ADMIN: [
+    'booking:view_any',
+    'staff:view_metrics',
+    'staff:reconcile',
+    'staff:resolve_outcome',
+    'capacity:publish',
+    'capacity:release',
+    'capacity:block',
+    'admin:manage_users',
+    'admin:manage_clinic_settings',
+    'admin:manage_appointment_types',
+    'admin:manage_staff_membership',
+    'admin:override_allocation',
+    'admin:change_global_policy',
+    'audit:search',
+    'audit:export',
+    'clinician:view_schedule',
+    'clinician:view_queue',
+    'clinician:view_room_readiness',
+  ],
 };
 
 /** Explicitly prohibited actions – these take precedence over ALLOWED. */
@@ -224,6 +245,11 @@ const PROHIBITED: Partial<Record<AppRole, readonly PermissionAction[]>> = {
     'admin:change_global_policy',
     'phi:view_clinical_notes',
     'tenant:cross_access',
+  ],
+  SYSTEM_ADMIN: [
+    'audit:mutate',
+    'tenant:cross_access',
+    'phi:view_clinical_notes',
   ],
 };
 
@@ -296,21 +322,4 @@ export function canAny(
   return actions.some(action => can(role, action, resource, context));
 }
 
-/** Whether the role is any kind of staff / non-patient role. */
-export function isStaffRole(role?: AppRole): boolean {
-  return role === 'BOOKING_STAFF' ||
-         role === 'CLINICIAN' ||
-         role === 'CLINIC_ADMIN' ||
-         role === 'OPERATIONS_MANAGER' ||
-         role === 'AUDITOR';
-}
-
-/** Whether the role can perform clinician workspace actions. */
-export function isClinicianRole(role?: AppRole): boolean {
-  return role === 'CLINICIAN';
-}
-
-/** Whether the role has access to booking operations. */
-export function isBookingActor(role?: AppRole): boolean {
-  return role === 'PATIENT' || role === 'CAREGIVER' || role === 'BOOKING_STAFF';
-}
+export { isStaffRole, isClinicianRole, isBookingActor } from '@slotsure/domain';

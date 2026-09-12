@@ -2,11 +2,22 @@
 
 import { LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import { isStaffRole, useSession } from '@/lib/session';
+import { can } from '@/lib/permissions';
 
 export function AppHeader({ staff = false }: { staff?: boolean }) {
   const { user, ready, signOut } = useSession();
   const isClinician = user?.role === 'CLINICIAN';
   const isAuditor = user?.role === 'AUDITOR';
+  const canAssistedBook = can(user?.role, 'booking:staff_assist');
+  const canReconcile = can(user?.role, 'staff:reconcile');
+  const canViewClinical = can(user?.role, 'clinician:view_schedule');
+
+  const profileHref =
+    user?.role === 'CLINICIAN'
+      ? '/clinician'
+      : isStaffRole(user?.role)
+      ? '/staff'
+      : '/account';
 
   return (
     <header className="header">
@@ -25,6 +36,11 @@ export function AppHeader({ staff = false }: { staff?: boolean }) {
           <a href="/clinician">My workspace</a>
         )}
 
+        {/* Clinical oversight for admin/ops when not in clinician portal */}
+        {!isClinician && canViewClinical && !staff && (
+          <a href="/clinician">Clinician oversight</a>
+        )}
+
         {/* Staff / admin links */}
         {user && isStaffRole(user.role) && !isClinician && !staff && (
           <a href="/staff">Operations</a>
@@ -32,8 +48,12 @@ export function AppHeader({ staff = false }: { staff?: boolean }) {
         {staff && (
           <>
             <a href="/staff">Operations</a>
-            <a href="/staff/booking/patient">Assisted booking</a>
-            <a href="/staff/reconciliation">Reconciliation</a>
+            {canAssistedBook && (
+              <a href="/staff/booking/patient">Assisted booking</a>
+            )}
+            {canReconcile && (
+              <a href="/staff/reconciliation">Reconciliation</a>
+            )}
           </>
         )}
 
@@ -42,7 +62,7 @@ export function AppHeader({ staff = false }: { staff?: boolean }) {
           <a href="/staff#audit">Governance</a>
         )}
 
-        {/* My appointments (patients) */}
+        {/* My appointments (patients / caregivers) */}
         {user && !isStaffRole(user.role) && (
           <a href="/account">My appointments</a>
         )}
@@ -53,7 +73,7 @@ export function AppHeader({ staff = false }: { staff?: boolean }) {
         {/* Auth */}
         {ready && user
           ? <>
-              <a className="account-link" href={isStaffRole(user.role) ? '/staff' : '/account'}>
+              <a className="account-link" href={profileHref}>
                 <UserRound aria-hidden="true" />{user.displayName}
               </a>
               <button className="nav-button" onClick={signOut}>

@@ -3,43 +3,18 @@
 import React from 'react';
 import { Video, Building2, ShieldCheck } from 'lucide-react';
 import { AppHeader } from '@/components/app-header';
-import { useSession } from '@/lib/session';
+import { AccessGate } from '@/components/access-gate';
 
 interface EncounterPageProps {
   params: Promise<{ encounterId: string }>;
 }
 
-export default function EncounterPage({ params }: EncounterPageProps) {
-  const { user, ready } = useSession();
+function EncounterContent({ params }: EncounterPageProps) {
   const [encounterId, setEncounterId] = React.useState<string>('');
 
   React.useEffect(() => {
     params.then(p => setEncounterId(p.encounterId));
   }, [params]);
-
-  if (!ready || !user) {
-    return (
-      <main>
-        <AppHeader />
-        <section className="centered-page"><p>Checking session…</p></section>
-      </main>
-    );
-  }
-
-  if (user.role !== 'CLINICIAN' && user.role !== 'CLINIC_ADMIN') {
-    return (
-      <main>
-        <AppHeader />
-        <section className="centered-page">
-          <div className="access-card">
-            <p className="eyebrow">Secure area</p>
-            <h1>Clinician access required</h1>
-            <a className="button" href="/sign-in">Go to sign in</a>
-          </div>
-        </section>
-      </main>
-    );
-  }
 
   return (
     <main>
@@ -96,5 +71,13 @@ export default function EncounterPage({ params }: EncounterPageProps) {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function EncounterPage(props: EncounterPageProps) {
+  return (
+    <AccessGate allowedRoles={['CLINICIAN', 'CLINIC_ADMIN']}>
+      <EncounterContent {...props} />
+    </AccessGate>
   );
 }

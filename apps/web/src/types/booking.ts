@@ -33,15 +33,10 @@ export type BookingAttemptState =
 
 // ── Domain Roles ─────────────────────────────────────────────────────────────
 
+import type { UserRole } from '@slotsure/domain';
+
 export type BookingActorRole = 'PATIENT' | 'CAREGIVER' | 'BOOKING_STAFF';
-export type AppRole =
-  | 'PATIENT'
-  | 'CAREGIVER'
-  | 'BOOKING_STAFF'
-  | 'CLINICIAN'
-  | 'CLINIC_ADMIN'
-  | 'OPERATIONS_MANAGER'
-  | 'AUDITOR';
+export type AppRole = UserRole;
 
 export type AuthorizationBasis =
   | 'SELF'

@@ -1,17 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppHeader } from '@/components/app-header';
+import { AccessGate } from '@/components/access-gate';
 import { useSession } from '@/lib/session';
+import { can } from '@/lib/permissions';
 import { PatientQueuePanel, ScheduleSkeleton, ErrorPanel, LiveAnnouncer } from '@/components/clinician-ui';
 import { getClinicianQueue, startEncounter } from '@/features/clinician/service';
 import type { QueueEntry } from '@/features/clinician/data';
-import { useState, useCallback } from 'react';
 
 const DEMO_CLINICIAN_ID = '00000000-0000-4000-8000-000000000301';
 
-export default function ClinicianQueuePage() {
+function ClinicianQueueContent() {
   const { user, ready } = useSession();
   const [startingId, setStartingId] = useState<string>();
   const [announcement, setAnnouncement] = useState('');
@@ -20,7 +21,7 @@ export default function ClinicianQueuePage() {
     queryKey: ['clinician-queue', DEMO_CLINICIAN_ID],
     queryFn: () => getClinicianQueue(DEMO_CLINICIAN_ID),
     refetchInterval: 15_000,
-    enabled: ready && (user?.role === 'CLINICIAN' || user?.role === 'CLINIC_ADMIN'),
+    enabled: ready && can(user?.role, 'clinician:view_queue'),
   });
 
   const handleStart = useCallback(async (entry: QueueEntry) => {
@@ -35,15 +36,6 @@ export default function ClinicianQueuePage() {
       setStartingId(undefined);
     }
   }, []);
-
-  if (!ready || !user) {
-    return (
-      <main>
-        <AppHeader />
-        <section className="centered-page"><p>Checking session…</p></section>
-      </main>
-    );
-  }
 
   return (
     <main>
@@ -69,3 +61,12 @@ export default function ClinicianQueuePage() {
     </main>
   );
 }
+
+export default function ClinicianQueuePage() {
+  return (
+    <AccessGate permission="clinician:view_queue">
+      <ClinicianQueueContent />
+    </AccessGate>
+  );
+}
+
